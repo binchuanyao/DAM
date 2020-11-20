@@ -1130,7 +1130,6 @@ def data_format(df, columns):
         elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):
             # print('整数,千分位', col)
             df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
-            # df[col]=df[col].apply(lambda x: '{:,}'.format(x))
         else:
             # print('2位小数,千分位', col)
             df.loc[df[col] > 0, col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
