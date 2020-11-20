@@ -17,7 +17,7 @@ class Calculate:
         self.cols = ['static_date', 'SKU_ID', 'sku_name', 'sku_state', 'warehouse',
                      'I_class', 'II_class', 'III_class', 'IV_class',
                      'weight', 'long', 'width', 'height',
-                     'fullCaseUnit', 'f_long', 'f_width', 'f_height',
+                     'fullCaseUnit', 'ctn_long', 'ctn_width', 'ctn_height',
                      'monthly_stock_cumu_qty', 'monthly_stock_cumu_days',
                      'monthly_deli_cumu_qty', 'monthly_deli_cumu_times', 'monthly_deli_cumu_days',
                      'monthly_rec_cumu_qty', 'monthly_rec_cumu_times', 'monthly_rec_cumu_days',
@@ -102,7 +102,7 @@ def correction_data(original):
     columns = ['static_date', 'SKU_ID', 'sku_name', 'sku_state', 'warehouse',
                'I_class', 'II_class', 'III_class', 'IV_class',
                'weight', 'long', 'width', 'height',
-               'fullCaseUnit', 'f_long', 'f_width', 'f_height',
+               'fullCaseUnit', 'ctn_long', 'ctn_width', 'ctn_height',
                'monthly_stock_cumu_qty', 'monthly_stock_cumu_days',
                'monthly_deli_cumu_qty', 'monthly_deli_cumu_times', 'monthly_deli_cumu_days',
                'monthly_rec_cumu_qty', 'monthly_rec_cumu_times', 'monthly_rec_cumu_days',
@@ -121,6 +121,9 @@ def correction_data(original):
     df['width'].fillna(value=0, inplace=True)
     df['height'].fillna(value=0, inplace=True)
     df['weight'].fillna(value=0, inplace=True)
+    df['ctn_long'].fillna(value=0, inplace=True)
+    df['ctn_width'].fillna(value=0, inplace=True)
+    df['ctn_height'].fillna(value=0, inplace=True)
 
     # 37 AL 最长边(mm)_原始
     df['longest'] = df[['long', 'width', 'height']].max(axis=1)  # 求一行的最大值
@@ -167,18 +170,19 @@ def correction_data(original):
     df['daily_order_times'] = 0
     for index, row in df.iterrows():
         if row['monthly_deli_cumu_days'] > 0:
-            df.loc[index, ['daily_deli_qty']] = row['monthly_deli_cumu_qty'] / row['monthly_deli_cumu_days']
-            df.loc[index, ['daily_order_times']] = row['monthly_deli_cumu_times'] / row['monthly_deli_cumu_days']
+            df.loc[index, ['daily_deli_qty']] = round(row['monthly_deli_cumu_qty'] / row['monthly_deli_cumu_days'], 2)
+            df.loc[index, ['daily_order_times']] = round(row['monthly_deli_cumu_times'] / row['monthly_deli_cumu_days'],
+                                                         2)
         else:
-            df.loc[index, ['daily_deli_qty']] = row['monthly_deli_cumu_qty'] / mdays
-            df.loc[index, ['daily_order_times']] = row['monthly_deli_cumu_times'] / mdays
+            df.loc[index, ['daily_deli_qty']] = round(row['monthly_deli_cumu_qty'] / mdays, 2)
+            df.loc[index, ['daily_order_times']] = round(row['monthly_deli_cumu_times'] / mdays, 2)
 
     # 93. CP 月度日均出库体积(mm3)_现状
-    df['daily_deli_vol_mm'] = df['daily_deli_qty'] * df['vol']
+    df['daily_deli_vol_mm'] = round(df['daily_deli_qty'] * df['vol'], 2)
     # 94. CQ 月度日均出库体积(m3)_现状
-    df['daily_deli_vol_m'] = df['daily_deli_qty'] * df['vol'] / pow(10, 9)
+    df['daily_deli_vol_m'] = round(df['daily_deli_qty'] * df['vol'] / pow(10, 9), 2)
     # 月度日均出库重量(kg)_现状
-    df['daily_deli_weight'] = df['daily_deli_qty'] * df['weight']  # weight or weight_corr
+    df['daily_deli_weight'] = round(df['daily_deli_qty'] * df['weight'], 2)  # weight or weight_corr
 
     '''
     月度日均 入库参数
@@ -370,8 +374,8 @@ def correction_data(original):
     # 42 AQ 箱规托盘每层码放箱数
     plt_l = config.PALLET_STOCK['long']
     plt_w = config.PALLET_STOCK['width']
-    max_s = df[['f_long', 'f_width']].max(axis=1)
-    min_s = df[['f_long', 'f_width']].min(axis=1)
+    max_s = df[['ctn_long', 'ctn_width']].max(axis=1)
+    min_s = df[['ctn_long', 'ctn_width']].min(axis=1)
 
     # type(left) = series
     left = np.floor(plt_l / max_s) * np.floor(plt_w / min_s) \
@@ -385,8 +389,8 @@ def correction_data(original):
 
     # 43 AR 箱规每托重量折算(kg)(按额定体积)
     df['ctn_pltWt'] = 0
-    df.loc[(df['f_long'] > 0) & (df['f_width'] > 0) & (df['f_height'] > 0), ['ctn_pltWt']] \
-        = np.floor(config.PALLET_STOCK['valid_height'] / df[['f_long', 'f_width', 'f_height']].min(axis=1)) \
+    df.loc[(df['ctn_long'] > 0) & (df['ctn_width'] > 0) & (df['ctn_height'] > 0), ['ctn_pltWt']] \
+        = np.floor(config.PALLET_STOCK['valid_height'] / df[['ctn_long', 'ctn_width', 'ctn_height']].min(axis=1)) \
           * df['layer_cartons'] * df['fullCaseUnit'] * df['weight']
 
     # 40 AO 商品尺寸&重量&托盘重量折算异常标识-原始数据  SW_isAbnormal_tag
@@ -455,31 +459,31 @@ def correction_data(original):
     df['CW_isAbnormal_state'] = '01箱规数据可用'
 
     df.loc[(df['fullCaseUnit'].isna()) | (df['fullCaseUnit'] == 0) |
-           (df['f_long'].isna()) | (df['f_long'] == 0) |
-           (df['f_width'].isna()) | (df['f_width'] == 0) |
-           df['f_height'].isna() | (df['f_height'] == 0),
+           (df['ctn_long'].isna()) | (df['ctn_long'] == 0) |
+           (df['ctn_width'].isna()) | (df['ctn_width'] == 0) |
+           df['ctn_height'].isna() | (df['ctn_height'] == 0),
            ['CW_isAbnormal_tag']] = 'Y'
     df.loc[(df['ctn_pltWt'] < config.THRESHOLD['pltWeight_lower']) |
            (df['ctn_pltWt'] > config.THRESHOLD['pltWeight_upper']) |
-           (df['vol'] * df['fullCaseUnit'] > df['f_long'] * df['f_width'] * df['f_height']),
+           (df['vol'] * df['fullCaseUnit'] > df['ctn_long'] * df['ctn_width'] * df['ctn_height']),
            ['CW_isAbnormal_tag']] = 'Y'
 
     df.loc[(df['ctn_pltWt'] < config.THRESHOLD['pltWeight_lower']) |
            (df['ctn_pltWt'] > config.THRESHOLD['pltWeight_upper']) |
-           (df['vol'] * df['fullCaseUnit'] > df['f_long'] * df['f_width'] * df['f_height']),
+           (df['vol'] * df['fullCaseUnit'] > df['ctn_long'] * df['ctn_width'] * df['ctn_height']),
            ['CW_isAbnormal_state']] = '03箱规维护可能有误'
     df.loc[(df['fullCaseUnit'].isna()) | (df['fullCaseUnit'] == 0) |
-           (df['f_long'].isna()) | (df['f_long'] == 0) |
-           (df['f_width'].isna()) | (df['f_width'] == 0) |
-           df['f_height'].isna() | (df['f_height'] == 0),
+           (df['ctn_long'].isna()) | (df['ctn_long'] == 0) |
+           (df['ctn_width'].isna()) | (df['ctn_width'] == 0) |
+           df['ctn_height'].isna() | (df['ctn_height'] == 0),
            ['CW_isAbnormal_state']] = '02无箱规数据/数据缺失'
 
-    # if pd.isna(df[['fullCaseUnit', 'f_long', 'f_width', 'f_height']]):
+    # if pd.isna(df[['fullCaseUnit', 'ctn_long', 'ctn_width', 'ctn_height']]):
     #     df['CW_isAbnormal_state'] = 'Y'
     # elif df['ctn_pltWt'] < config.THRESHOLD['pltWeight_lower'] \
     #         or df['ctn_pltWt'] > config.THRESHOLD['pltWeight_upper']:
     #     df['CW_isAbnormal_state'] = 'Y'
-    # elif df['vol'] * df['fullCaseUnit'] > df['f_long'] * df['f_width'] * df['f_height']:
+    # elif df['vol'] * df['fullCaseUnit'] > df['ctn_long'] * df['ctn_width'] * df['ctn_height']:
     #     df['CW_isAbnormal_state'] = 'Y'
     # else:
     #     df['CW_isAbnormal_state'] = 'N'
@@ -487,8 +491,8 @@ def correction_data(original):
     # 44 AT箱规重量折算_异常状态  CW_isAbnormal_state
     # df['CW_isAbnormal_state'] = '01箱规数据可用'
     # df.loc[(df['CW_isAbnormal_tag'] == 'Y') & (df['CW_isAbnormal_state'].isna()), ['CW_isAbnormal_state']] = '03箱规维护可能有误'
-    # df.loc[(df['fullCaseUnit'].isna()) | (df['f_long'].isna()) |
-    #        (df['f_width'].isna()) | (df['f_height'].isna()), ['CW_isAbnormal_state']] = '02无箱规数据/数据缺失'
+    # df.loc[(df['fullCaseUnit'].isna()) | (df['ctn_long'].isna()) |
+    #        (df['ctn_width'].isna()) | (df['ctn_height'].isna()), ['CW_isAbnormal_state']] = '02无箱规数据/数据缺失'
 
     '''
     重量，长宽高缺少数据，用类目数据修正
@@ -662,7 +666,12 @@ def correction_data(original):
     df['mid_side'] = df[['corrLong', 'corrWidth', 'corrHeight']].sum(axis=1) - df['corrLongest'] - \
                      df[['corrLong', 'corrWidth', 'corrHeight']].min(axis=1)
 
-    df['size'] = np.NAN  # '4H'
+    ## 原箱件型辅助列
+    df['ctn_max_side'] = df[['ctn_long', 'ctn_width', 'ctn_height']].max(axis=1)
+    df['ctn_min_side'] = df[['ctn_long', 'ctn_width', 'ctn_height']].min(axis=1)
+    df['ctn_mid_side'] = df['ctn_max_side'] - df['ctn_min_side']
+
+    df['size'] = ''  # '4H'
     df.loc[(df['corrLongest'] <= config.SIZE['longest'][0]) &
            (df['mid_side'] <= config.SIZE['middle'][0]) &
            (df['corrWeight'] <= config.SIZE['weight'][0]), ['size']] = config.SIZE['type'][0]
@@ -674,6 +683,17 @@ def correction_data(original):
     df.loc[(df['corrLongest'] > config.SIZE['longest'][2]) &
            (df['size'].isna()), ['size']] = config.SIZE['type'][3]  # '4H'
     # df.drop('mid_side')  # 删除赋值列
+
+    #### 原箱件型
+    df['ctn_size'] = np.NAN  # '4H'
+    df.loc[(df['ctn_max_side'] <= config.SIZE['longest'][0]) &
+           (df['ctn_mid_side'] <= config.SIZE['middle'][0]), ['ctn_size']] = config.SIZE['ctn_type'][0]
+    df.loc[(df['ctn_max_side'] <= config.SIZE['longest'][1]) &
+           (df['ctn_size'].isna()), ['ctn_size']] = config.SIZE['ctn_type'][1]
+    df.loc[(df['ctn_max_side'] <= config.SIZE['longest'][2]) &
+           (df['ctn_size'].isna()), ['ctn_size']] = config.SIZE['ctn_type'][2]
+    df.loc[(df['ctn_max_side'] > config.SIZE['longest'][2]) &
+           (df['ctn_size'].isna()), ['ctn_size']] = config.SIZE['ctn_type'][3]  # '4H'
 
     '''
     实际日均出库体积
@@ -879,20 +899,20 @@ def correction_data(original):
     df.loc[(df['CW_isAbnormal_tag'] == 'N') & (df['corrLongest'] <= config.SIZE['longest'][2]) &
            (df['ctn_pltWt'] <= config.PALLET_STOCK['weight_upper']) &
            (df['min_side'] < config.PALLET_STOCK['valid_height']), ['ctn_pltHeight']] = \
-        np.floor(config.PALLET_STOCK['valid_height'] / df['f_height']) * df['f_height'] + config.PALLET_STOCK[
+        np.floor(config.PALLET_STOCK['valid_height'] / df['ctn_height']) * df['ctn_height'] + config.PALLET_STOCK[
             'plt_height']
 
     # 70 BS	箱规每托实际码放件数(按额定体积&重量折算)  码放层数 * 每层箱数 * 箱件数
     df['ctn_pltQty'] = 0
     # 箱高计算的码垛层数 * 每层箱数 * 箱件数
     df.loc[(df['CW_isAbnormal_tag'] == 'N') & (df['ctn_pltWt'] <= config.PALLET_STOCK['weight_upper']),
-           ['ctn_pltQty']] = np.floor(config.PALLET_STOCK['valid_height'] / df['f_height']) \
+           ['ctn_pltQty']] = np.floor(config.PALLET_STOCK['valid_height'] / df['ctn_height']) \
                              * df['layer_cartons'] * df['fullCaseUnit']
 
     ### 托均箱数
     df['ctn_per_plt'] = 0
     df.loc[(df['CW_isAbnormal_tag'] == 'N') & (df['ctn_pltWt'] <= config.PALLET_STOCK['weight_upper']),
-           ['ctn_per_plt']] = np.floor(config.PALLET_STOCK['valid_height'] / df['f_height']) \
+           ['ctn_per_plt']] = np.floor(config.PALLET_STOCK['valid_height'] / df['ctn_height']) \
                               * df['layer_cartons']
 
     # 托盘最大载重计算的码垛层数 * 每层箱数 * 箱件数
@@ -1736,8 +1756,8 @@ def correction_data(original):
     # 131 EB 存储位箱规体积(m3)_现状
     df['current_stockCtnVol'] = 0
     df.loc[(df['CW_isAbnormal_tag'] == 'N'), ['current_stockCtnVol']] = df['ctn_per_plt'] * (
-            df['f_long'] * df['f_width'] * df[
-        'f_height']) * \
+            df['ctn_long'] * df['ctn_width'] * df[
+        'ctn_height']) * \
                                                                         (df['current_stockQty'] / df[
                                                                             'ctn_pltQty']) / pow(
         10, 9)
@@ -1766,7 +1786,7 @@ def correction_data(original):
     df['design_daily_stock_sku'] = df['daily_stock_sku'] * config.DESIGN_COEFFICIENT['sku_num_coe']
 
     # 157 FB 月度日均出库数量(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
-    df['design_daily_deli_qty'] = df['daily_deli_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe']
+    df['design_daily_deli_qty'] = round(df['daily_deli_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe'], 2)
 
     # 158 FC 月度日均出库体积(m3)(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
     df['design_daily_deli_vol_m'] = df['daily_deli_vol_m'] * config.DESIGN_COEFFICIENT['total_qty_coe']
@@ -2930,7 +2950,7 @@ def correction_data(original):
     sku_pc_class = df[['SKU_ID', 'sku_name', 'daily_stock_PC_class', 'daily_deli_PC_class']]
 
     outBound_ref = df[['SKU_ID', 'fullCaseUnit', 'corrVol', 'CW_isAbnormal_tag', 'toteQty', 'pltQty',
-                       'unit_deli_longest_state', 'ctn_deli_longest_state', 'size',
+                       'unit_deli_longest_state', 'ctn_deli_longest_state', 'size', 'ctn_size',
                        'current_stock_mode', 'current_stock_equiSize', 'prac_daily_deli_PC_class']]
 
     return df, outBound_ref, IV_class_data, sku_pc_class

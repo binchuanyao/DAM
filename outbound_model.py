@@ -24,11 +24,12 @@ def outbound(sku_ref, outbound_org, result_path):
                   'deli_type', 'package_size', 'package_weight', 'package_long', 'package_width',
                   'package_height', 'package_num', 'province', 'city',
                   'fullCaseUnit', 'corrVol', 'CW_isAbnormal_tag', 'toteQty', 'pltQty',
-                  'unit_deli_longest_state', 'ctn_deli_longest_state', 'size',
+                  'unit_deli_longest_state', 'ctn_deli_longest_state', 'size', 'ctn_size',
                   'current_stock_mode', 'current_stock_equiSize', 'prac_daily_deli_PC_class'
                   ]
 
     df['size'] = df['size'].fillna('')
+    df['ctn_size'] = df['ctn_size'].fillna('')
     df['fullCaseUnit'] = df['fullCaseUnit'].fillna(0)
     df['corrVol'] = df['corrVol'].fillna(0)
     df['toteQty'] = df['toteQty'].fillna(0)
@@ -56,8 +57,16 @@ def outbound(sku_ref, outbound_org, result_path):
     df['pieceQ'] = df['total_qty'] - df['pltQ'] - df['ctnQ']
 
     ## 散件折合箱数
-    df['piece2ctn'] = 0
-    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctn']] = df['pieceQ'] / df['fullCaseUnit']
+    df['piece2ctnN'] = 0
+    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctnN']] = df['pieceQ'] / df['fullCaseUnit']
+
+    ## 总件数折合托盘数
+    df['total_qty2pltN'] = 0
+    df.loc[(df['pltQty'] > 0), ['total_qty2pltN']] = df['total_qty'] / df['pltQty']
+
+    ## 总件数折合整箱数
+    df['total_qty2ctnN'] = 0
+    df.loc[(df['fullCaseUnit'] > 0), ['total_qty2ctnN']] = df['total_qty'] / df['fullCaseUnit']
 
     # 整托订购折算标识
     df['isPlt'] = 'N'
@@ -77,17 +86,27 @@ def outbound(sku_ref, outbound_org, result_path):
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] == 0:
             df.loc[index, ['skuClassInOrder']] = 'P'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
-            df.loc[index, ['skuClassInOrder']] = 'PC'
+            df.loc[index, ['skuClassInOrder']] = 'P-C'
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'PB'
+            df.loc[index, ['skuClassInOrder']] = 'P-B'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
             df.loc[index, ['skuClassInOrder']] = 'C'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'CB'
+            df.loc[index, ['skuClassInOrder']] = 'C-B'
         if row['pltN'] == 0 and row['ctnN'] == 0 and row['pieceQ'] > 0:
             df.loc[index, ['skuClassInOrder']] = 'B'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = '0PCB'
+            df.loc[index, ['skuClassInOrder']] = 'P-C-B'
+
+    ### 订单内SKU订购件型组合
+    df['sizeComb'] = ''
+    for index, row in df.iterrows():
+        if row['ctnN'] >= 1 and row['pieceQ'] == 0:
+            df.loc[index, ['sizeComb']] = row['ctn_size']
+        elif row['ctnN'] >= 1 and row['pieceQ'] > 0:
+            df.loc[index, ['sizeComb']] = row['ctn_size'] + '-' + row['size']
+        elif row['ctnN'] < 1 and row['pieceQ'] > 0:
+            df.loc[index, ['sizeComb']] = row['size']
 
     ### 订单订购分级
     df['maxSkuClass'] = df['skuClassInOrder'].apply(lambda x: x[:1]).tolist()
@@ -384,18 +403,24 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
-    writer = pd.ExcelWriter(result_path)
+    writer = pd.ExcelWriter('{}outBound1.xlsx'.format(result_path))
     df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
     order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
     sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
+    writer.close()
+    writer.save()
 
     ### -----------------------------------------------------------------------------------
-    # 提取透视表
-
+    # 提取透视表,写入单独文件
+    writer = pd.ExcelWriter('{}outBound2.xlsx'.format(result_path))
     ## 1. sku维度透视表
     idx11 = ['size']
     size = out_sku_pivot(df, index=idx11)
     size.to_excel(excel_writer=writer, sheet_name='11-size', inf_rep='')
+
+    idx11 = ['ctn_size', 'size']
+    size = out_sku_qty_pivot(df, index=idx11)
+    size.to_excel(excel_writer=writer, sheet_name='11-sizeComb', inf_rep='')
 
     idx12 = ['size_rele']
     size_rele = out_sku_pivot(df, index=idx12)

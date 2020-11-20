@@ -8,22 +8,22 @@ from outbound_model import *
 
 # Press the green button in the gutter to run the script.
 def run(data_path, org_path, result_path, outbound_path=None, outResult_path=None):
-    time1 = datetime.datetime.now()
+    time1 = datetime.now()
     print('-' * 20 + '导入数据' + '-' * 20)
     org = load_data(data_path)
-    time2 = datetime.datetime.now()
+    time2 = datetime.now()
     print('数据导入时间：', (time2 - time1).seconds, ' S')
 
     ### -------------------------------------------------------------------------------
     df, outBound_ref, IV_class_data, sku_pc_class = correction_data(org)
     # df, I_class_data, II_class_data, III_class_data, IV_class_data = correction_data(org)
-    time3 = datetime.datetime.now()
+    time3 = datetime.now()
     print('-' * 50)
     print('字段计算时间：', (time3 - time2).seconds, ' S')
 
     # 计算结果写入execle文件
     ### -------------------------------------------------------------------------------
-    wriTime1 = datetime.datetime.now()
+    wriTime1 = datetime.now()
     writer = pd.ExcelWriter(org_path)
     df.to_excel(excel_writer=writer, sheet_name='OriginalData', float_format='%.4f')
     outBound_ref.to_excel(excel_writer=writer, sheet_name='outBound_ref')
@@ -36,7 +36,7 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     writer.save()
     writer.close()
 
-    wriTime2 = datetime.datetime.now()
+    wriTime2 = datetime.now()
     print('-' * 50)
     print('原始数据行数：', df.shape[0])
     print('原始数据列数：', df.shape[1])
@@ -44,27 +44,27 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
 
     # 库存分析生成透视表并写入文件
     ### -------------------------------------------------------------------------------
-    pt1 = datetime.datetime.now()
+    pt1 = datetime.now()
     generate_pivot_table(df, outFileName=result_path)
-    pt2 = datetime.datetime.now()
+    pt2 = datetime.now()
     print('-' * 50)
     print('库存分析字段计算及文件写入时间：', (pt2 - pt1).seconds, ' S')
 
     ### -------------------------------------------------------------------------------
     # 调用出库模型
-    outTime1 = datetime.datetime.now()
+    outTime1 = datetime.now()
     if outbound_path is not None and outResult_path is not None:
         outbound_org = load_outbound(outbound_path)
-        outTime2 = datetime.datetime.now()
+        outTime2 = datetime.now()
         print('出库数据导入时间：', (outTime2 - outTime1).seconds, ' S')
         outbound(outBound_ref, outbound_org, outResult_path)
 
-        outTime3 = datetime.datetime.now()
+        outTime3 = datetime.now()
         print('出库分析字段计算时间&文件写入时间：', (outTime3 - outTime2).seconds, ' S')
 
 
 if __name__ == '__main__':
-    startTime = datetime.datetime.now()
+    startTime = datetime.now()
     print('-' * 20 + '程序开始' + '-' * 20 + '')
 
     # file_path1 = 'D:/Project/亿格/YG/jy_original.xlsx'
@@ -87,11 +87,11 @@ if __name__ == '__main__':
 
     org_path = 'D:/Work/Project/09蜜思肤/Output/msf_stockClass1.xlsx'
     result_path = 'D:/Work/Project/09蜜思肤/Output/msf_stockClass2.xlsx'
-    out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_outBound.xlsx'
+    out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
 
     run(file_path, org_path, result_path, outbound_path=out_path, outResult_path=out_result_path)
 
     print('-' * 20 + '程序运行完成！' + '-' * 20 + '')
-    endTime = datetime.datetime.now()
+    endTime = datetime.now()
     print('-' * 50)
     print('程序运行总时间：', (endTime - startTime).seconds, ' S')

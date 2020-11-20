@@ -44,7 +44,7 @@ def generate_pivot_table(df, outFileName):
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
     # write to file
-    palletPick_factor.to_excel(excel_writer=writer, sheet_name='01-palletPick_factor')
+    palletPick_factor.to_excel(excel_writer=writer, sheet_name='01-palletPick_factor', inf_rep='')
     # worksheet = writer.sheets['01-palletPick_factor']
     # worksheet.format()
 
@@ -143,12 +143,6 @@ def generate_pivot_table(df, outFileName):
                'current_stockQty', 'current_pickQty']
 
     idx14 = ['IV_class']
-    ### 类别均值
-    class_avg = pd.pivot_table(df, index=idx14,
-                               values=['pltQty', 'fullCaseUnit'], aggfunc='mean',
-                               fill_value=0,
-                               margins=True).reset_index()
-    class_avg.to_excel(excel_writer=writer, sheet_name='class_avg', inf_rep='')
 
     # class_pt = avg_pltQty_class(df, index=idx14, pt_col=plt_col)
     # class_pt.to_excel(excel_writer=writer, sheet_name='class_pt', inf_rep='')
@@ -167,6 +161,13 @@ def generate_pivot_table(df, outFileName):
     warehouse_pt = general_class(df, sku=sku, index=idx15, pt_col=pt_col_com)
     warehouse_pt.to_excel(excel_writer=writer, sheet_name='15-warehouse_pt', inf_rep='')
 
+    ### 类别均值
+    class_avg = pd.pivot_table(df, index=idx14,
+                               values=['pltQty', 'fullCaseUnit'], aggfunc='mean',
+                               fill_value=0,
+                               margins=True).reset_index()
+    class_avg.to_excel(excel_writer=writer, sheet_name='16-class_avg', inf_rep='')
+
     # ---------------------------------------------------------------------------------
     '''
     分级相关字段透视表
@@ -174,18 +175,18 @@ def generate_pivot_table(df, outFileName):
     '''
     121透视_PalletW-V-Pallet_O1 托盘重量分级透视表-成托
     '''
-    palletWt_class_df = df.loc[(df['sku_state'] == '良品'),
-                               ['SKU_ID', 'pltWt_class_palletized', 'pltWt_class_all',
-                                'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                                'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m', ]]
+    # palletWt_class_df = df.loc[(df['sku_state'] == '良品'),
+    #                            ['SKU_ID', 'pltWt_class_palletized', 'pltWt_class_all',
+    #                             'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
+    #                             'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty','daily_deli_pltN', 'daily_deli_vol_m', ]]
 
     idx21 = ['pltWt_class_palletized']
-    pltWt_class_palletized = general_class(palletWt_class_df, sku=sku, index=idx21, isCumu=True)
+    pltWt_class_palletized = general_class(df, sku=sku, index=idx21, isCumu=True)
     pltWt_class_palletized.to_excel(excel_writer=writer, sheet_name='21-pltWt_class_palletized', inf_rep='')
 
     # 122透视_PalletW-V-Pallet_O1 托盘重量分级透视表-成托&不成托
     idx22 = ['pltWt_class_all']
-    pltWt_class_all = general_class(palletWt_class_df, sku=sku, index=idx22, isCumu=True)
+    pltWt_class_all = general_class(df, sku=sku, index=idx22, isCumu=True)
     pltWt_class_all.to_excel(excel_writer=writer, sheet_name='22-pltWt_class_all', inf_rep='')
 
     '''
@@ -194,7 +195,8 @@ def generate_pivot_table(df, outFileName):
     toteWt_class_df = df.loc[(df['sku_state'] == '良品'),
                              ['SKU_ID', 'toteWt_class',
                               'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                              'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']]
+                              'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN',
+                              'daily_deli_vol_m']]
     idx23 = ['toteWt_class']
     toteWt_class = general_class(toteWt_class_df, sku=sku, index=idx23, isCumu=True)
     toteWt_class.to_excel(excel_writer=writer, sheet_name='23-toteWt_class', inf_rep='')
@@ -289,7 +291,7 @@ def generate_pivot_table(df, outFileName):
                      'current_shuttle_num', 'current_pltStockN', 'current_pltPickN',
                      'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
                      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku',
-                     'daily_deli_qty', 'daily_deli_vol_m',
+                     'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m',
                      'current_stockQty', 'current_pickQty',
                      'current_stockVol_m', 'current_pickVol_m'
                      ]]
@@ -357,11 +359,11 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
 
     if pt_col is None:
         if isSimple:
-            col = ['daily_stock_qty', 'daily_stock_vol_m',
-                   'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         else:
-            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                   'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         pt_col = col
 
     tmp1 = pd.pivot_table(df, index=index,
@@ -393,20 +395,20 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
     # 判断是否计算累计比例，若计算，一般为件数及体积的累计比例
     if isCumu:
         for i in range(len(cols)):
-            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum().apply(lambda x: '%.2f%%' % (x * 100))
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            # result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum().apply(lambda x: '%.2f%%' % (x * 100))
+            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
+    # # 更新比例为百分数
+    # for i in range(len(cols)):
+    #     result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
 
     # 计算件数周转天数
     if 'daily_deli_qty' in result_pt.columns:
-        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 2)
+        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 4)
 
     # 计算体积周转天数
     if 'daily_deli_vol_m' in result_pt.columns:
-        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 2)
+        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 4)
 
     if isAvg:
         # 计算字段
@@ -418,11 +420,13 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
                 'current_pltStockN' in result_pt.columns and 'current_pltPickN' in result_pt.columns:
             result_pt['avg_pltQty'] = (result_pt['current_stockQty'] + result_pt['current_pickQty']) / \
                                       (result_pt['current_pltStockN'] + result_pt['current_pltPickN'])
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
+    # # 更新透视列数据为千分位形式
+    # if 'VOL' in cols:
+    #     result_pt['VOL'] = round(result_pt['VOL'], 2)
+    # result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -432,11 +436,11 @@ def avg_pltQty_class(df, index, sku=None, pt_col=None, isCumu=True, isSimple=Tru
         sku = ['SKU_ID']
     if pt_col is None:
         if isSimple:
-            col = ['daily_stock_qty', 'daily_stock_vol_m',
-                   'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         else:
-            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                   'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         pt_col = col
 
     tmp1 = pd.pivot_table(df, index=index,
@@ -512,11 +516,11 @@ def abc_class(df, index, sku=None, pt_col=None, isCumu=True, isSimple=True):
         sku = ['SKU_ID']
     if pt_col is None:
         if isSimple:
-            col = ['daily_stock_qty', 'daily_stock_vol_m',
-                   'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         else:
-            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                   'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         pt_col = col
 
     tmp1 = pd.pivot_table(df, index=index,
@@ -546,24 +550,18 @@ def abc_class(df, index, sku=None, pt_col=None, isCumu=True, isSimple=True):
     if isCumu:
         for i in range(len(cols)):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
     # 计算件数周转天数
     if 'daily_deli_qty' in result_pt.columns:
-        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 2)
+        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 4)
 
     # 计算体积周转天数
     if 'daily_deli_vol_m' in result_pt.columns:
-        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 2)
+        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 4)
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -574,11 +572,11 @@ def pc_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True):
 
     if pt_col is None:
         if isSimple:
-            col = ['daily_stock_qty', 'daily_stock_vol_m',
-                   'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         else:
-            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                   'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']
+            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+                   'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         pt_col = col
 
     tmp1 = pd.pivot_table(df, index=index,
@@ -611,25 +609,18 @@ def pc_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True):
     if isCumu:
         for i in range(len(cols)):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
-
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
     # 计算件数周转天数
     if 'daily_deli_qty' in result_pt.columns:
-        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 2)
+        result_pt['qty_turnover_days'] = round(result_pt['daily_stock_qty'] / result_pt['daily_deli_qty'], 4)
 
     # 计算体积周转天数
     if 'daily_deli_vol_m' in result_pt.columns:
-        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 2)
+        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 4)
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -711,13 +702,8 @@ def current_equ_class(df, index, sku=None, pt_col=None, isCumu=False):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
             result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
-
-    # 更新透视列数据为千分位形式
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -758,13 +744,8 @@ def design_equ_class(df, index, sku=None, pt_col=None, isCumu=False):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
             result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
-
-    # 更新透视列数据为千分位形式
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -774,16 +755,16 @@ def out_sku_pivot(df, index, sku=None, pt_col=None, isCumu=True):
         sku = ['SKU_ID']
 
     # SKU的非重复计数
-    distCount_sku = df[index + sku].groupby(index).SKU_ID.nunique()
-    df_disCount = (pd.DataFrame(distCount_sku)).reset_index()
+    dist_count_sku = df[index + sku].groupby(index).SKU_ID.nunique()
+    df_disCount = (pd.DataFrame(dist_count_sku)).reset_index()
     df_disCount = pd.pivot_table(df_disCount, index=index,
                                  aggfunc='sum',
                                  fill_value=0,
                                  margins=True).reset_index()
-    df_disCount.columns = index + ['sku_distCount']
+    df_disCount.columns = index + ['sku_dist_count']
 
     if pt_col is None:
-        pt_col = ['total_qty', 'VOL']
+        pt_col = ['total_qty', 'total_qty2pltN', 'total_qty2ctnN', 'VOL']
 
     tmp1 = pd.pivot_table(df, index=index,
                           values=sku, aggfunc='count',
@@ -800,7 +781,7 @@ def out_sku_pivot(df, index, sku=None, pt_col=None, isCumu=True):
     result_pt = pd.merge(df_disCount, result_temp, how='left', sort=False)
 
     # 重排列
-    result_pt = result_pt[index + ['sku_distCount', 'line_count'] + pt_col]
+    result_pt = result_pt[index + ['sku_dist_count', 'line_count'] + pt_col]
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -811,42 +792,43 @@ def out_sku_pivot(df, index, sku=None, pt_col=None, isCumu=True):
 
     # 计算比例
     for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = round(result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2), 4)
-        # result_pt[cols[i] + '%'] = result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2)
+        # result_pt[cols[i] + '%'] = round(result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2), 4)
+        result_pt[cols[i] + '%'] = result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2)
 
     # 判断是否计算累计比例，若计算，一般为件数及体积的累计比例
     if isCumu:
         for i in range(len(cols)):
-            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum().apply(lambda x: '%.2f%%' % (x * 100))
-            # result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            # result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum().apply(lambda x: '%.2f%%' % (x * 100))
+            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
+    # # 更新比例为百分数
+    # for i in range(len(cols)):
+    #     result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
 
-    result_pt['daily_deli_qty_perSKU'] = round(result_pt['total_qty'] / result_pt['sku_distCount'], 2).apply(
-        lambda x: '{:,}'.format(x))
-    result_pt['daily_deli_line_perSKU'] = round(result_pt['line_count'] / result_pt['sku_distCount'], 2).apply(
-        lambda x: '{:,}'.format(x))
-    if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_distCount'], 2).apply(
-            lambda x: '{:,}'.format(x))
-
-    # result_pt['daily_deli_qty_perSKU'] = result_pt['total_qty'] / result_pt['sku_distCount']
-    # result_pt['daily_deli_line_perSKU'] = result_pt['line_count'] / result_pt['sku_distCount']
+    # result_pt['daily_deli_qty_perSKU'] = round(result_pt['total_qty'] / result_pt['sku_dist_count'], 2).apply(
+    #     lambda x: '{:,}'.format(x))
+    # result_pt['daily_deli_line_perSKU'] = round(result_pt['line_count'] / result_pt['sku_dist_count'], 2).apply(
+    #     lambda x: '{:,}'.format(x))
     # if 'VOL' in result_pt.columns:
-    #     result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_distCount']
+    #     result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_dist_count'], 2).apply(
+    #         lambda x: '{:,}'.format(x))
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
+    result_pt['daily_deli_qty_perSKU'] = result_pt['total_qty'] / result_pt['sku_dist_count']
+    result_pt['daily_deli_line_perSKU'] = result_pt['line_count'] / result_pt['sku_dist_count']
+    if 'VOL' in result_pt.columns:
+        result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
+
+    # # 更新透视列数据为千分位形式
+    # if 'VOL' in cols:
+    #     result_pt['VOL'] = round(result_pt['VOL'], 2)
+    # result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
 
     # result_pt.style.set_precision(2)
     # pct_cols = [x for x in list(result_pt.columns) if '%' in x ]
     # result_pt.style.format("{:.2%}", subset= pct_cols, na_rep='')
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     # result_pt = result_pt.style.set_properties(**{
     #     'font-size': '10pt',
@@ -859,16 +841,16 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
     if order is None:
         order = ['orderID']
 
-    distCount_order = df[index + order].groupby(index).orderID.nunique()
-    df_disCount = (pd.DataFrame(distCount_order)).reset_index()
+    dist_count_order = df[index + order].groupby(index).orderID.nunique()
+    df_disCount = (pd.DataFrame(dist_count_order)).reset_index()
     df_disCount = pd.pivot_table(df_disCount, index=index,
                                  aggfunc='sum',
                                  fill_value=0,
                                  margins=True).reset_index()
-    df_disCount.columns = index + ['order_distCount']
+    df_disCount.columns = index + ['order_dist_count']
 
     if pt_col is None:
-        pt_col = ['total_qty', 'VOL']
+        pt_col = ['total_qty', 'total_qty2pltN', 'total_qty2ctnN', 'VOL']
 
     tmp1 = pd.pivot_table(df, index=index,
                           values=order, aggfunc='count',
@@ -885,7 +867,7 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
     result_pt = pd.merge(df_disCount, result_temp, how='left', sort=False)
 
     # 重排列
-    result_pt = result_pt[index + ['order_distCount', 'line_count'] + pt_col]
+    result_pt = result_pt[index + ['order_dist_count', 'line_count'] + pt_col]
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -901,22 +883,15 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
     # 判断是否计算累计比例，若计算，一般为件数及体积的累计比例
     if isCumu:
         for i in range(len(cols)):
-            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum().apply(lambda x: '%.2f%%' % (x * 100))
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
+    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 4)
+    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 4)
+    result_pt['vol_per_order'] = round(result_pt['VOL'] / result_pt['order_dist_count'], 4)
 
-    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_distCount'], 2)
-    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_distCount'], 2)
-    result_pt['vol_per_order'] = round(result_pt['VOL'] / result_pt['order_distCount'], 2)
-
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -924,27 +899,27 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
 def out_order_sku_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=True):
     if order is None:
         order = ['orderID']
-    distCount_order = df[index + order].groupby(index).orderID.nunique()
-    df_disCount_order = (pd.DataFrame(distCount_order)).reset_index()
+    dist_count_order = df[index + order].groupby(index).orderID.nunique()
+    df_disCount_order = (pd.DataFrame(dist_count_order)).reset_index()
     df_disCount_order = pd.pivot_table(df_disCount_order, index=index,
                                        aggfunc='sum',
                                        fill_value=0,
                                        margins=True).reset_index()
-    df_disCount_order.columns = index + ['order_distCount']
+    df_disCount_order.columns = index + ['order_dist_count']
 
     if sku is None:
         sku = ['SKU_ID']
     # SKU的非重复计数
-    distCount_sku = df[index + sku].groupby(index).SKU_ID.nunique()
-    df_disCount_sku = (pd.DataFrame(distCount_sku)).reset_index()
+    dist_count_sku = df[index + sku].groupby(index).SKU_ID.nunique()
+    df_disCount_sku = (pd.DataFrame(dist_count_sku)).reset_index()
     df_disCount_sku = pd.pivot_table(df_disCount_sku, index=index,
                                      aggfunc='sum',
                                      fill_value=0,
                                      margins=True).reset_index()
-    df_disCount_sku.columns = index + ['sku_distCount']
+    df_disCount_sku.columns = index + ['sku_dist_count']
 
     if pt_col is None:
-        pt_col = ['total_qty', 'VOL']
+        pt_col = ['total_qty', 'total_qty2pltN', 'total_qty2ctnN', 'VOL']
 
     tmp1 = pd.pivot_table(df, index=index,
                           values=order, aggfunc='count',
@@ -963,7 +938,7 @@ def out_order_sku_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Tru
     result_pt = pd.merge(tmp3, result_temp, how='outer', sort=False)
 
     # 重排列
-    result_pt = result_pt[index + ['order_distCount', 'sku_distCount', 'line_count'] + pt_col]
+    result_pt = result_pt[index + ['order_dist_count', 'sku_dist_count', 'line_count'] + pt_col]
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -980,22 +955,15 @@ def out_order_sku_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Tru
     if isCumu:
         for i in range(len(cols)):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
-
-    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_distCount'], 2)
-    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_distCount'], 2)
+    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 2)
+    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 2)
     if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_distCount'], 2)
+        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_dist_count'], 2)
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -1004,16 +972,17 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
     if sku is None:
         sku = ['SKU_ID']
     # SKU的非重复计数
-    distCount_sku = df[index + sku].groupby(index).SKU_ID.nunique()
-    df_disCount_sku = (pd.DataFrame(distCount_sku)).reset_index()
+    dist_count_sku = df[index + sku].groupby(index).SKU_ID.nunique()
+    df_disCount_sku = (pd.DataFrame(dist_count_sku)).reset_index()
     df_disCount_sku = pd.pivot_table(df_disCount_sku, index=index,
                                      aggfunc='sum',
                                      fill_value=0,
                                      margins=True).reset_index()
-    df_disCount_sku.columns = index + ['sku_distCount']
+    df_disCount_sku.columns = index + ['sku_dist_count']
 
     if pt_col is None:
-        pt_col = ['pltN', 'ctnN', 'piece2ctn', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
+        pt_col = ['pltN', 'ctnN', 'piece2ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'total_qty2pltN',
+                  'total_qty2ctnN', 'VOL']
 
     tmp1 = pd.pivot_table(df, index=index,
                           values=sku, aggfunc='count',
@@ -1030,7 +999,7 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
     result_pt = pd.merge(df_disCount_sku, result_temp, how='outer', sort=False)
 
     # 重排列
-    result_pt = result_pt[index + ['sku_distCount', 'line_count'] + pt_col]
+    result_pt = result_pt[index + ['sku_dist_count', 'line_count'] + pt_col]
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -1040,9 +1009,9 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
         result_pt.loc[result_pt[index[0]] == 'All', [pt_col[i]]] = df[pt_col[i]].sum()
 
     # 计算整托数、整箱数、散件数占总件数的比例
-    h_pct_cols = pt_col[3:6]
+    h_pct_cols = pt_col[3:7]
     for item in h_pct_cols:
-        result_pt[item + '/total_qty'] = result_pt[item] / result_pt['total_qty']
+        result_pt[item + '/total_qty%'] = result_pt[item] / df['total_qty'].sum()
 
     # 计算比例
     for i in range(len(cols)):
@@ -1052,22 +1021,15 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
     if isCumu:
         for i in range(len(cols)):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
-
-    result_pt['daily_deli_qty_perSKU'] = result_pt['total_qty'] / result_pt['sku_distCount']
-    result_pt['daily_deli_line_perSKU'] = result_pt['line_count'] / result_pt['sku_distCount']
+    result_pt['daily_deli_qty_perSKU'] = result_pt['total_qty'] / result_pt['sku_dist_count']
+    result_pt['daily_deli_line_perSKU'] = result_pt['line_count'] / result_pt['sku_dist_count']
     if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_distCount']
+        result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
 
@@ -1075,27 +1037,28 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
 def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=False):
     if order is None:
         order = ['orderID']
-    distCount_order = df[index + order].groupby(index).orderID.nunique()
-    df_disCount_order = (pd.DataFrame(distCount_order)).reset_index()
+    dist_count_order = df[index + order].groupby(index).orderID.nunique()
+    df_disCount_order = (pd.DataFrame(dist_count_order)).reset_index()
     df_disCount_order = pd.pivot_table(df_disCount_order, index=index,
                                        aggfunc='sum',
                                        fill_value=0,
                                        margins=True).reset_index()
-    df_disCount_order.columns = index + ['order_distCount']
+    df_disCount_order.columns = index + ['order_dist_count']
 
     if sku is None:
         sku = ['SKU_ID']
     # SKU的非重复计数
-    distCount_sku = df[index + sku].groupby(index).SKU_ID.nunique()
-    df_disCount_sku = (pd.DataFrame(distCount_sku)).reset_index()
+    dist_count_sku = df[index + sku].groupby(index).SKU_ID.nunique()
+    df_disCount_sku = (pd.DataFrame(dist_count_sku)).reset_index()
     df_disCount_sku = pd.pivot_table(df_disCount_sku, index=index,
                                      aggfunc='sum',
                                      fill_value=0,
                                      margins=True).reset_index()
-    df_disCount_sku.columns = index + ['sku_distCount']
+    df_disCount_sku.columns = index + ['sku_dist_count']
 
     if pt_col is None:
-        pt_col = ['pltN', 'ctnN', 'piece2ctn', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
+        pt_col = ['pltN', 'ctnN', 'piece2ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'total_qty2pltN',
+                  'total_qty2ctnN', 'VOL']
 
     tmp1 = pd.pivot_table(df, index=index,
                           values=order, aggfunc='count',
@@ -1114,7 +1077,7 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
     result_pt = pd.merge(tmp3, result_temp, how='outer', sort=False)
 
     # 重排列
-    result_pt = result_pt[index + ['order_distCount', 'sku_distCount', 'line_count'] + pt_col]
+    result_pt = result_pt[index + ['order_dist_count', 'sku_dist_count', 'line_count'] + pt_col]
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -1124,9 +1087,9 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
         result_pt.loc[result_pt[index[0]] == 'All', [pt_col[i]]] = df[pt_col[i]].sum()
 
     # 计算整托数、整箱数、散件数占总件数的比例
-    h_pct_cols = pt_col[3:6]
+    h_pct_cols = pt_col[3:7]
     for item in h_pct_cols:
-        result_pt[item + '/total_qty'] = result_pt[item] / result_pt['total_qty']
+        result_pt[item + '/total_qty%'] = result_pt[item] / df['total_qty'].sum()
 
     # 计算比例
     for i in range(len(cols)):
@@ -1136,24 +1099,46 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
     if isCumu:
         for i in range(len(cols)):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
-            result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
+            # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    # 更新比例为百分数
-    for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = result_pt[cols[i] + '%'].apply(lambda x: '%.2f%%' % (x * 100))
-
-    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_distCount'], 2)
-    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_distCount'], 2)
+    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 2)
+    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 2)
     if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_distCount'], 2)
+        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_dist_count'], 2)
 
-    # 更新透视列数据为千分位形式
-    if 'VOL' in cols:
-        result_pt['VOL'] = round(result_pt['VOL'], 2)
-    result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
-
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
     return result_pt
+
+
+def data_format(df, columns):
+    # print(columns)
+    # print('-' * 30)
+    for col in columns:
+        # df.loc[np.isinf(df[col]), col] = np.NAN
+        if '%' in col:
+            # print('%%%', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
+        elif 'per' in col or 'days' in col or 'avg' in col or 'vol' in col:
+            # print('2位小数,千分位', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
+                lambda x: '{:,}'.format(x))
+        elif ('N' in col or 'Q' in col) and ('2' not in col):
+            # print('整数,千分位', col)
+            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
+        elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):
+            # print('整数,千分位', col)
+            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
+            # df[col]=df[col].apply(lambda x: '{:,}'.format(x))
+        else:
+            # print('2位小数,千分位', col)
+            df.loc[df[col] > 0, col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
+                lambda x: '{:,}'.format(x))
+        if 'cumu' in col:
+            df.loc[(df[df.columns[0]] == 'All'), [col]] = ''
+        df.loc[(df[col] == 'inf'), [col]] = ''
+    return df
 
 
 def trans(columns):
@@ -1173,7 +1158,7 @@ def trans(columns):
             col = col.replace('shelf', '轻架')
             col = col.replace('shuttle', '多穿')
             col = col.replace('num', '数量')
-            col = col.replace('equi', '设备')
+            col = col.replace('equipment', '设备')
             col = col.replace('mode', '模式')
             col = col.replace('pltStockN', '存储托盘数量')
             col = col.replace('pltPickN', '拣选托盘数量')
@@ -1187,20 +1172,22 @@ def trans(columns):
             col = col.replace('plt', '托盘')
             col = col.replace('tote', '料箱')
             col = col.replace('Wt', '重量')
+            col = col.replace('qty', '件数')
+            col = col.replace('Qty', '件数')
             col = col.replace('N', '数量')
             col = col.replace('Q', '件数')
             col = col.replace('ctn', '原箱')
             col = col.replace('piece', '散件')
             col = col.replace('total', '总')
+            col = col.replace('2', '折合')
             col = col.replace('skuClassInOrder', '订单内sku分级')
 
             # 出库透视表字段翻译
             col = col.replace('SKU_ID', 'SKU数')
             col = col.replace('orderID', '订单数')
             col = col.replace('order', '订单')
+            col = col.replace('dist_count', '非重复计数')
             col = col.replace('_', '')
-            col = col.replace('qty', '件数')
-            col = col.replace('Qty', '件数')
             col = col.replace('vol', '体积')
             col = col.replace('Vol', '体积')
             col = col.replace('VOL', '体积')
@@ -1208,7 +1195,6 @@ def trans(columns):
             col = col.replace('line', '行')
             col = col.replace('rele', '关联')
             col = col.replace('structure', '结构')
-            col = col.replace('distCount', '非重复计数')
             col = col.replace('count', '数')
             col = col.replace('cumu', '累计')
             col = col.replace('per', '/')

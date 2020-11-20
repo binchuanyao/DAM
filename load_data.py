@@ -47,7 +47,7 @@ def load_original(original_fileName):
     original.columns = ['static_date', 'SKU_ID', 'sku_name', 'sku_state', 'warehouse',
                         'I_class', 'II_class', 'III_class', 'IV_class',
                         'weight', 'long', 'width', 'height',
-                        'fullCaseUnit', 'f_long', 'f_width', 'f_height',
+                        'fullCaseUnit', 'ctn_long', 'ctn_width', 'ctn_height',
                         'monthly_stock_cumu_qty', 'monthly_stock_cumu_days',
                         'monthly_deli_cumu_qty', 'monthly_deli_cumu_times', 'monthly_deli_cumu_days',
                         'monthly_rec_cumu_qty', 'monthly_rec_cumu_times', 'monthly_rec_cumu_days',
