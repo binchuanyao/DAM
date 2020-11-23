@@ -70,6 +70,9 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
         outTime3 = datetime.now()
         print('出库分析字段计算时间&文件写入时间：', (outTime3 - outTime2).seconds, ' S')
 
+def gene_factor():
+    plt_config = [1200, 1000]
+    print('git test')
 
 if __name__ == '__main__':
     startTime = datetime.now()
