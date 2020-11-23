@@ -931,12 +931,12 @@ def correction_data(original):
            ['toteQty']] = config.TOTE['weight_upper'] / df['corrWeight'] * config.TOTE['rate']
 
     # 72 BU	托盘码放均件数(按额定体积&重量折算)_含全部修正
-    df['pltQty'] = 0
+    df['pltQty'] = np.NAN
     df.loc[(df['ctn_pltQty'] > 0), ['pltQty']] = df['ctn_pltQty']
-    df.loc[(df['corrSW_isAbnormal_tag'] == 'N') &
+    df.loc[(df['pltQty'].isna()) & (df['corrSW_isAbnormal_tag'] == 'N') &
            (config.PALLET_STOCK['valid_vol'] / df['corrVol'] * df['corrWeight'] <= config.PALLET_STOCK['weight_upper']),
            ['pltQty']] = config.PALLET_STOCK['valid_vol'] / df['corrVol']
-    df.loc[(df['corrSW_isAbnormal_tag'] == 'N') &
+    df.loc[(df['pltQty'].isna()) & (df['corrSW_isAbnormal_tag'] == 'N') &
            (config.PALLET_STOCK['valid_vol'] / df['corrVol'] * df['corrWeight'] > config.PALLET_STOCK['weight_upper']),
            ['pltQty']] = config.PALLET_STOCK['weight_upper'] / df['corrWeight'] * config.PALLET_STOCK['rate']
 
@@ -1753,14 +1753,18 @@ def correction_data(original):
     # 130 EA 存储位商品体积(m3)_现状
     df['current_stockVol_m'] = df['current_stockQty'] * df['corrVol'] / pow(10, 9)
 
+    df['vol_factor'] = df['current_stockVol_m'] * pow(10, 9) / (
+            df['current_pltStockN'] * config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
+
     # 131 EB 存储位箱规体积(m3)_现状
     df['current_stockCtnVol'] = 0
-    df.loc[(df['CW_isAbnormal_tag'] == 'N'), ['current_stockCtnVol']] = df['ctn_per_plt'] * (
-            df['ctn_long'] * df['ctn_width'] * df[
-        'ctn_height']) * \
-                                                                        (df['current_stockQty'] / df[
-                                                                            'ctn_pltQty']) / pow(
+    df.loc[(df['CW_isAbnormal_tag'] == 'N'), ['current_stockCtnVol']] = (df['pltQty'] / df['fullCaseUnit']) * (
+            df['ctn_long'] * df['ctn_width'] * df['ctn_height']) * \
+                                                                        (df['current_stockQty'] / df['pltQty']) / pow(
         10, 9)
+
+    df['ctnVol_factor'] = df['current_stockCtnVol'] * pow(10, 9) / (
+            df['current_pltStockN'] * config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
     # 132 EC 调拨出库(ABC标识) allot_tag_ABC
     df['allot_tag_ABC'] = 'N'
