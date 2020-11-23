@@ -15,8 +15,8 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     print('数据导入时间：', (time2 - time1).seconds, ' S')
 
     ### -------------------------------------------------------------------------------
-    df, outBound_ref, IV_class_data, sku_pc_class = correction_data(org)
-    # df, I_class_data, II_class_data, III_class_data, IV_class_data = correction_data(org)
+    df, outBound_ref, IV_class_data, sku_pc_class = calu_stock_data(org)
+    # df, I_class_data, II_class_data, III_class_data, IV_class_data = calu_stock_data(org)
     time3 = datetime.now()
     print('-' * 50)
     print('字段计算时间：', (time3 - time2).seconds, ' S')
@@ -24,7 +24,8 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     # 计算结果写入execle文件
     ### -------------------------------------------------------------------------------
     wriTime1 = datetime.now()
-    writer = pd.ExcelWriter(org_path)
+    str_writime = wriTime1.strftime('%Y_%m_%d_%H_%M')
+    writer = pd.ExcelWriter('{}stockClass1_{}.xlsx'.format(org_path, str_writime))
     df.to_excel(excel_writer=writer, sheet_name='OriginalData', float_format='%.4f')
     outBound_ref.to_excel(excel_writer=writer, sheet_name='outBound_ref')
     # I_class_data.to_excel(excel_writer=writer, sheet_name='I_class_data')
@@ -45,6 +46,13 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     # 库存分析生成透视表并写入文件
     ### -------------------------------------------------------------------------------
     pt1 = datetime.now()
+
+    factor_path = 'D:/Work/Project/09蜜思肤/Output/msf_stock_factor.xlsx'
+
+    ### -------------------------------------------------------------------------------
+    ## 计算不同托盘尺寸下存储区/拣选区的存储系数
+    # get_stock_factor(df, outFileName=factor_path)
+
     generate_pivot_table(df, outFileName=result_path)
     pt2 = datetime.now()
     print('-' * 50)
@@ -85,9 +93,11 @@ if __name__ == '__main__':
     file_path = 'D:/Work/Project/09蜜思肤/data/msf_original.xlsx'
     out_path = 'D:/Work/Project/09蜜思肤/data/msf_outbound_original.xlsx'
 
-    org_path = 'D:/Work/Project/09蜜思肤/Output/msf_stockClass1.xlsx'
-    result_path = 'D:/Work/Project/09蜜思肤/Output/msf_stockClass2.xlsx'
+    org_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+    result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
     out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+
+    # run(file_path, org_path, result_path)
 
     run(file_path, org_path, result_path, outbound_path=out_path, outResult_path=out_result_path)
 

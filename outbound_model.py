@@ -81,35 +81,35 @@ def outbound(sku_ref, outbound_org, result_path):
     df.loc[(df['pieceQ'] > 0), ['isBox']] = 'Y'
 
     ### 订单内SKU订购分级
-    df['skuClassInOrder'] = ''
+    df['sku_class'] = ''
     for index, row in df.iterrows():
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] == 0:
-            df.loc[index, ['skuClassInOrder']] = 'P'
+            df.loc[index, ['sku_class']] = 'P'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
-            df.loc[index, ['skuClassInOrder']] = 'P-C'
+            df.loc[index, ['sku_class']] = 'P-C'
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'P-B'
+            df.loc[index, ['sku_class']] = 'P-B'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
-            df.loc[index, ['skuClassInOrder']] = 'C'
+            df.loc[index, ['sku_class']] = 'C'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'C-B'
+            df.loc[index, ['sku_class']] = 'C-B'
         if row['pltN'] == 0 and row['ctnN'] == 0 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'B'
+            df.loc[index, ['sku_class']] = 'B'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
-            df.loc[index, ['skuClassInOrder']] = 'P-C-B'
+            df.loc[index, ['sku_class']] = 'P-C-B'
 
     ### 订单内SKU订购件型组合
-    df['sizeComb'] = ''
+    df['sku_size_comb'] = ''
     for index, row in df.iterrows():
         if row['ctnN'] >= 1 and row['pieceQ'] == 0:
-            df.loc[index, ['sizeComb']] = row['ctn_size']
+            df.loc[index, ['sku_size_comb']] = row['ctn_size']
         elif row['ctnN'] >= 1 and row['pieceQ'] > 0:
-            df.loc[index, ['sizeComb']] = row['ctn_size'] + '-' + row['size']
+            df.loc[index, ['sku_size_comb']] = row['ctn_size'] + '-' + row['size']
         elif row['ctnN'] < 1 and row['pieceQ'] > 0:
-            df.loc[index, ['sizeComb']] = row['size']
+            df.loc[index, ['sku_size_comb']] = row['size']
 
     ### 订单订购分级
-    df['maxSkuClass'] = df['skuClassInOrder'].apply(lambda x: x[:1]).tolist()
+    df['maxSkuClass'] = df['sku_class'].apply(lambda x: x[:1]).tolist()
     order_class = {}
     order_dict = df.groupby('orderID')['maxSkuClass']
     for k, v in order_dict:
@@ -403,7 +403,9 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
-    writer = pd.ExcelWriter('{}outBound1.xlsx'.format(result_path))
+    time = datetime.now()
+    str_time = time.strftime('%Y_%m_%d_%H_%M')
+    writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
     df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
     order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
     sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
@@ -412,7 +414,9 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ### -----------------------------------------------------------------------------------
     # 提取透视表,写入单独文件
-    writer = pd.ExcelWriter('{}outBound2.xlsx'.format(result_path))
+    time = datetime.now()
+    str_time = time.strftime('%Y_%m_%d_%H_%M')
+    writer = pd.ExcelWriter('{}outBound2_{}.xlsx'.format(result_path, str_time))
     ## 1. sku维度透视表
     idx11 = ['size']
     size = out_sku_pivot(df, index=idx11)
@@ -426,7 +430,7 @@ def outbound(sku_ref, outbound_org, result_path):
     size_rele = out_sku_pivot(df, index=idx12)
     size_rele.to_excel(excel_writer=writer, sheet_name='12-size_rele', inf_rep='')
 
-    idx13 = ['skuClassInOrder']
+    idx13 = ['sku_class']
     # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
     pt = out_sku_qty_pivot(df, index=idx13)
     pt.to_excel(excel_writer=writer, sheet_name='13-skuClass', inf_rep='')
@@ -434,6 +438,11 @@ def outbound(sku_ref, outbound_org, result_path):
     idx14 = ['order_class']
     pt = out_order_qty_pivot(df, index=idx14)
     pt.to_excel(excel_writer=writer, sheet_name='14-orderClass', inf_rep='')
+
+    idx15 = ['sku_size_comb']
+    # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
+    pt = out_sku_qty_pivot(df, index=idx15)
+    pt.to_excel(excel_writer=writer, sheet_name='15-sku_size_comb', inf_rep='')
 
     """
     ## 2. 订单维度透视表

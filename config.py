@@ -46,7 +46,7 @@ class Config:
         self.PALLET_PICK = {
             'long': 1200,
             'width': 1000,
-            'height': 150,
+            'plt_height': 150,
             'valid_height': 1300,
             'rate': 0.4,
             'min_wid': 0,
@@ -57,7 +57,7 @@ class Config:
             'combine_locs': 1,
             'unit_weight': 10,
             'unit_square': 3.15,
-            'to_self.PALLET_PICK': 1.0
+            '2plt': 1.0
         }
 
         # 轻型货架(D300)

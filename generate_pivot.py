@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from calculate import *
+from stock_model import *
 
 
 def generate_pivot_table(df, outFileName):
@@ -13,7 +13,10 @@ def generate_pivot_table(df, outFileName):
     config = Config()
     config.run()
 
-    writer = pd.ExcelWriter(outFileName)
+    time = datetime.now()
+    str_time = time.strftime('%Y_%m_%d_%H_%M')
+    writer = pd.ExcelWriter('{}stockClass2_{}.xlsx'.format(outFileName, str_time))
+
     workbook = writer.book
     workbook.add_format(
         {'bold': False, 'font_size': 8, 'font_name': u'Microsoft YaHei Light'})
@@ -58,10 +61,11 @@ def generate_pivot_table(df, outFileName):
                                         values=['current_pltStockN', 'current_stockVol_m', 'current_stockCtnVol'],
                                         aggfunc=np.sum, fill_value=0).reset_index()
 
-    palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
+    palletStock_factor['ctn_factor'] = palletStock_factor['current_stockCtnVol'] * pow(10, 9) / (
             palletStock_factor['current_pltStockN'] *
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
-    palletStock_factor['ctn_factor'] = palletStock_factor['current_stockCtnVol'] * pow(10, 9) / (
+
+    palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
             palletStock_factor['current_pltStockN'] *
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
@@ -338,6 +342,47 @@ def generate_pivot_table(df, outFileName):
     idx63 = ['design_stock_mode', 'design_stock_equiSize', 'size']
     design_equType_size = design_equ_class(df, index=idx63)
     design_equType_size.to_excel(excel_writer=writer, sheet_name='63-design_equType_size', inf_rep='')
+
+    # 保存文件
+    writer.save()
+    writer.close()
+
+
+def get_stock_factor(df, outFileName):
+    config = Config()
+    config.run()
+    writer = pd.ExcelWriter(outFileName)
+
+    d1 = pd.DataFrame.from_dict(config.PALLET_STOCK, orient='index', columns=['PALLET_STOCK']).reset_index()
+    d2 = pd.DataFrame.from_dict(config.PALLET_PICK, orient='index', columns=['PALLET_PICK']).reset_index()
+
+    d = pd.merge(d1, d2, on='index', how='outer')
+    d.to_excel(excel_writer=writer, sheet_name='0-basic', inf_rep='')
+
+    ### 存储位托盘系数
+    palletStock_factor = pd.pivot_table(df, index='warehouse',
+                                        values=['current_pltStockN', 'current_stockVol_m', 'current_stockCtnVol'],
+                                        aggfunc=np.sum, fill_value=0).reset_index()
+
+    palletStock_factor['ctn_factor'] = palletStock_factor['current_stockCtnVol'] * pow(10, 9) / (
+            palletStock_factor['current_pltStockN'] *
+            config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
+
+    palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
+            palletStock_factor['current_pltStockN'] *
+            config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
+    palletStock_factor.to_excel(excel_writer=writer, sheet_name='1-stock_factor', inf_rep='')
+
+    ### 拣选位托盘系数
+    palletPick_factor = pd.pivot_table(df, index='warehouse', values=['current_pltPickN', 'current_pickVol_m'],
+                                       aggfunc=np.sum, fill_value=0).reset_index()
+
+    palletPick_factor['factor'] = palletPick_factor['current_pickVol_m'] * pow(10, 9) / (
+            palletPick_factor['current_pltPickN'] *
+            config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
+
+    # write to file
+    palletPick_factor.to_excel(excel_writer=writer, sheet_name='2-pick_factor', inf_rep='')
 
     # 保存文件
     writer.save()
@@ -1120,6 +1165,10 @@ def data_format(df, columns):
         if '%' in col:
             # print('%%%', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
+        elif 'avg_vol' in col or 'avg_weight' in col:
+            # print('2位小数,千分位', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 4)).apply(
+                lambda x: '{:,}'.format(x))
         elif 'per' in col or 'days' in col or 'avg' in col or 'vol' in col:
             # print('2位小数,千分位', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
