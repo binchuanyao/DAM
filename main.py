@@ -28,12 +28,28 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     writer = pd.ExcelWriter('{}stockClass1_{}.xlsx'.format(org_path, str_writime))
     df.to_excel(excel_writer=writer, sheet_name='OriginalData', float_format='%.4f')
     outBound_ref.to_excel(excel_writer=writer, sheet_name='outBound_ref')
+
     # I_class_data.to_excel(excel_writer=writer, sheet_name='I_class_data')
     # II_class_data.to_excel(excel_writer=writer, sheet_name='II_class_data')
     # III_class_data.to_excel(excel_writer=writer, sheet_name='III_class_data')
     # IV_class_data.to_excel(excel_writer=writer, sheet_name='IV_class_data')
     IV_class_data.to_excel(excel_writer=writer, sheet_name='IV_class_data')
     sku_pc_class.to_excel(excel_writer=writer, sheet_name='sku_pc_class')
+
+    ### 平均托盘件数
+
+    tmp1 = pd.pivot_table(df, index=['IV_class'],
+                          values=['SKU_ID'], aggfunc='count',
+                          fill_value=0,
+                          margins=True).reset_index()
+
+    tmp2 = pd.pivot_table(df, index=['IV_class'],
+                          values=['pltQty', 'fullCaseUnit'], aggfunc='mean',
+                          fill_value=0,
+                          margins=True).reset_index()
+    avg_pltQty = pd.merge(tmp1, tmp2, how='left', sort=False)
+    avg_pltQty.to_excel(excel_writer=writer, sheet_name='avg_pltQty')
+
     writer.save()
     writer.close()
 
@@ -53,7 +69,7 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     ## 计算不同托盘尺寸下存储区/拣选区的存储系数
     # get_stock_factor(df, outFileName=factor_path)
 
-    generate_pivot_table(df, outFileName=result_path)
+    # generate_pivot_table(df, outFileName=result_path)
     pt2 = datetime.now()
     print('-' * 50)
     print('库存分析字段计算及文件写入时间：', (pt2 - pt1).seconds, ' S')
@@ -78,31 +94,31 @@ if __name__ == '__main__':
     startTime = datetime.now()
     print('-' * 20 + '程序开始' + '-' * 20 + '')
 
-    # file_path1 = 'D:/Project/亿格/YG/jy_original.xlsx'
-    # file_path2 = 'D:/Project/亿格/YG/ly_original.xlsx'
+    # stock_file1 = 'D:/Project/亿格/YG/jy_original.xlsx'
+    # stock_file2 = 'D:/Project/亿格/YG/ly_original.xlsx'
     # org_path1 = 'D:/Project/亿格/YG/output/jy_org.xlsx'
     # org_path2 = 'D:/Project/亿格/YG/output/ly_org.xlsx'
     # result_fileName1 = 'D:/Project/亿格/YG/output/jy_result.xlsx'
     # result_fileName2 = 'D:/Project/亿格/YG/output/ly_result.xlsx'
 
-    # run(file_path1, org_path1, result_fileName1)
-    # run(file_path2, org_path2, result_fileName2)
+    # run(stock_file1, org_path1, result_fileName1)
+    # run(stock_file2, org_path2, result_fileName2)
 
-    # file_path3 = 'D:/Project/亿格/YG/source_data.xlsx'
+    # stock_file3 = 'D:/Project/亿格/YG/source_data.xlsx'
     # org_path3 = 'D:/Project/亿格/YG/output/all_org.xlsx'
     # result_fileName3 = 'D:/Project/亿格/YG/output/all_result.xlsx'
-    # run(file_path3, org_path3, result_fileName3)
+    # run(stock_file3, org_path3, result_fileName3)
 
-    file_path = 'D:/Work/Project/09蜜思肤/data/msf_original.xlsx'
-    out_path = 'D:/Work/Project/09蜜思肤/data/msf_outbound_original.xlsx'
+    stock_file = 'D:/Work/Project/09蜜思肤/msf_data/msf_original.xlsx'
+    outbound_file = 'D:/Work/Project/09蜜思肤/msf_data/msf_outbound_original.xlsx'
 
     org_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
     result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
     out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
 
-    # run(file_path, org_path, result_path)
+    # run(stock_file, org_path, result_path)
 
-    run(file_path, org_path, result_path, outbound_path=out_path, outResult_path=out_result_path)
+    run(stock_file, org_path, result_path, outbound_path=outbound_file, outResult_path=out_result_path)
 
     print('-' * 20 + '程序运行完成！' + '-' * 20 + '')
     endTime = datetime.now()

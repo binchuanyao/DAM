@@ -381,7 +381,7 @@ def calu_stock_data(original):
     left = np.floor(plt_l / max_s) * np.floor(plt_w / min_s) \
            + np.floor((plt_l - np.floor(plt_l / max_s) * max_s) / min_s) * np.floor(plt_w / max_s)
     right = np.floor(plt_l / min_s) * np.floor(plt_w / max_s) \
-            + np.floor((plt_w - np.floor(plt_w / max_s) * max_s) / min_s) * np.floor(plt_l / min_s)
+            + np.floor((plt_w - np.floor(plt_w / max_s) * max_s) / min_s) * np.floor(plt_l / max_s)
 
     tmp = left.to_frame(name='left')
     tmp['right'] = right.to_frame(name='right')
@@ -1012,6 +1012,17 @@ def calu_stock_data(original):
         df.loc[(df['pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
                (df['pltWt'] <= config.PLT_WEIGHT_CLASS[i][2]),
                ['pltWt_class_all']] = config.PLT_WEIGHT_CLASS[i][0]
+
+    ### ------------------------------------------------------------
+    ###  增加按额定体积折算的 托盘重量分级
+    df['vol_pltWt_class'] = np.NAN
+    df.loc[(df['corrSW_isAbnormal_tag'] == 'Y'), ['vol_pltWt_class']] = df['corrSW_isAbnormal_state']
+    df.loc[(df['size'] == config.SIZE['type'][3]), ['vol_pltWt_class']] = config.SIZE['type'][3]
+
+    for i in range(pltWtClassNum):
+        df.loc[(df['corr_vol_pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
+               (df['corr_vol_pltWt'] <= config.PLT_WEIGHT_CLASS[i][2]),
+               ['vol_pltWt_class']] = config.PLT_WEIGHT_CLASS[i][0]
 
     # 78 CA	料箱重量分级(按额定体积&重量折算)
     df['toteWt_class'] = np.NAN

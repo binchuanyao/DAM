@@ -52,13 +52,29 @@ def outbound(sku_ref, outbound_org, result_path):
 
     # 16 Q 一级箱规原箱订购件数折算
     df['ctnQ'] = df['ctnN'] * df['fullCaseUnit']
+    df['ctnQ'].fillna(0)
+
+    ## 整箱折算成托数
+    df['ctn2pltN'] = 0
+    df.loc[(df['pltQty'] > 0), ['ctn2pltN']] = df['ctnQ'] / df['pltQty']
 
     ## 散件订购件数
     df['pieceQ'] = df['total_qty'] - df['pltQ'] - df['ctnQ']
 
     ## 散件折合箱数
     df['piece2ctnN'] = 0
-    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctnN']] = df['pieceQ'] / df['fullCaseUnit']
+    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctnN']] = np.floor(df['pieceQ'] / df['fullCaseUnit'])
+
+    ## 散件折合料箱数
+    df['piece2toteN'] = round(df['pieceQ'] * df['corrVol'] / config.TOTE['valid_vol'], 2)
+
+    # 散件折合整箱对应件数
+    df['piece2ctn_qty'] = 0
+    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctn_qty']] = df['piece2ctnN'] * df['fullCaseUnit']
+
+    # 散件折合整箱后余数
+    df['piece2ctn_remainder'] = 0
+    df.loc[(df['fullCaseUnit'] > 0), ['piece2ctn_remainder']] = df['pieceQ'] - df['piece2ctn_qty']
 
     ## 总件数折合托盘数
     df['total_qty2pltN'] = 0
@@ -69,34 +85,42 @@ def outbound(sku_ref, outbound_org, result_path):
     df.loc[(df['fullCaseUnit'] > 0), ['total_qty2ctnN']] = df['total_qty'] / df['fullCaseUnit']
 
     # 整托订购折算标识
-    df['isPlt'] = 'N'
-    df.loc[(df['pltN'] >= 1), ['isPlt']] = 'Y'
+    df['isP'] = ''
+    df.loc[(df['pltN'] >= 1), ['isP']] = 'P'
 
     # 17 R 一级箱规原箱订购折算标识
-    df['isCtn'] = 'N'
-    df.loc[(df['ctnN'] >= 1), ['isCtn']] = 'Y'
+    df['isC'] = ''
+    df.loc[(df['ctnN'] >= 1), ['isC']] = 'C'
 
     # 散件订购标识
-    df['isBox'] = 'N'
-    df.loc[(df['pieceQ'] > 0), ['isBox']] = 'Y'
+    df['isB'] = ''
+    df.loc[(df['pieceQ'] > 0), ['isB']] = 'B'
 
     ### 订单内SKU订购分级
     df['sku_class'] = ''
+    df['order_ZS_tag'] = ''
     for index, row in df.iterrows():
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] == 0:
             df.loc[index, ['sku_class']] = 'P'
+            df.loc[index, ['order_ZS_tag']] = 'Z'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
             df.loc[index, ['sku_class']] = 'P-C'
+            df.loc[index, ['order_ZS_tag']] = 'Z'
         if row['pltN'] >= 1 and row['ctnN'] == 0 and row['pieceQ'] > 0:
             df.loc[index, ['sku_class']] = 'P-B'
+            df.loc[index, ['order_ZS_tag']] = 'Z-S'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] == 0:
             df.loc[index, ['sku_class']] = 'C'
+            df.loc[index, ['order_ZS_tag']] = 'Z'
         if row['pltN'] == 0 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
             df.loc[index, ['sku_class']] = 'C-B'
+            df.loc[index, ['order_ZS_tag']] = 'Z-S'
         if row['pltN'] == 0 and row['ctnN'] == 0 and row['pieceQ'] > 0:
             df.loc[index, ['sku_class']] = 'B'
+            df.loc[index, ['order_ZS_tag']] = 'S'
         if row['pltN'] >= 1 and row['ctnN'] >= 1 and row['pieceQ'] > 0:
             df.loc[index, ['sku_class']] = 'P-C-B'
+            df.loc[index, ['order_ZS_tag']] = 'Z-S'
 
     ### 订单内SKU订购件型组合
     df['sku_size_comb'] = ''
@@ -128,40 +152,37 @@ def outbound(sku_ref, outbound_org, result_path):
     df['VOL'] = 0
     df['VOL'] = df['total_qty'] * df['corrVol'] / pow(10, 9)
 
-    # 14 O 购买体积分级
-    df['lineVol'] = ''
+    # 14 O 订单行内SKU体积分级
+    df['EIV_class'] = ''
     toteClassNum = len(config.TOTE_CLASS_INTERVAL) - 1
     PCClassNum = len(config.PC_CLASS)
     for index, row in df.iterrows():
         if row['size'] == config.SIZE['type'][3]:
-            df.loc[index, ['lineVol']] = row['size']
+            df.loc[index, ['EIV_class']] = row['size']
         else:
             for i in range(PCClassNum):
                 if i < toteClassNum:
                     if row['size'] == config.SIZE['type'][0] \
                             and row['VOL'] > config.PC_CLASS[i][1] * config.TOTE['valid_vol'] / pow(10, 9) \
                             and row['VOL'] <= config.PC_CLASS[i][2] * config.TOTE['valid_vol'] / pow(10, 9):
-                        df.loc[index, ['lineVol']] = config.PC_CLASS[i][0]
+                        df.loc[index, ['EIV_class']] = config.PC_CLASS[i][0]
                         break
                 else:
                     if row['VOL'] > config.PC_CLASS[i][1] * config.PALLET_PICK['valid_vol'] / pow(10, 9) and \
                             row['VOL'] <= config.PC_CLASS[i][2] * config.PALLET_PICK['valid_vol'] / pow(10, 9):
-                        df.loc[index, ['lineVol']] = config.PC_CLASS[i][0]
+                        df.loc[index, ['EIV_class']] = config.PC_CLASS[i][0]
                         break
 
     # 订单行内PC分级标签
-    df['PC_tag'] = df['lineVol'].apply(lambda x: x[:1]).tolist()
-    # df.loc[type(df['lineVol']) == np.string ] = df['lineVol'].apply(lambda x: x[:1]).tolist()
+    df['inLine_PC_tag'] = df['EIV_class'].apply(lambda x: x[:1]).tolist()
+    # df.loc[type(df['EIV_class']) == np.string ] = df['EIV_class'].apply(lambda x: x[:1]).tolist()
 
-    # ---------------------------------------------------------------------------------------------------------------
-    # 订单维度基础信息
+    ### ---------------------------------------------------------------------------------------------------------------
+    ### 订单维度基础信息
     order_temp1 = df.groupby('orderID').agg(EN_countSKU=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
     order_temp2 = df.groupby('orderID').agg(EQ_sumQty=pd.NamedAgg(column='total_qty', aggfunc='sum'),
                                             EV_sumVol=pd.NamedAgg(column='VOL', aggfunc='sum')).reset_index()
     order_detail = pd.merge(order_temp1, order_temp2, how='left', on='orderID', sort=False)
-
-    print('-' * 30)
-    # pprint.pprint(order_detail)
 
     # 订单维度的SKU数分级
     order_detail['EN_class'] = 0
@@ -208,6 +229,103 @@ def outbound(sku_ref, outbound_org, result_path):
     # order_detail 列重排
     order_detail = order_detail[['orderID', 'order_structure', 'EQ_sumQty', 'EN_countSKU', 'EV_sumVol',
                                  'EQ_class', 'EN_class', 'EV_class']]
+
+    ### ---------------------------------------------------------------------------------------------------------------
+    ### 整箱订购order维度基础信息
+    ### 新建df_z,选取整箱订购行，添加 order_sku_tag 标签
+    # z_cols = ['orderID', 'SKU_ID','pltN', 'pltQ', 'ctnN', 'ctnQ', 'VOL']
+    df_z = df[(df['pltQ'] > 0) | (df['ctnQ'] > 0)].copy().reset_index()
+    df_z['total_qty'] = df_z['pltQ'] + df_z['ctnQ']
+    df_z['inline_tag'] = 'Z'
+
+    order_temp1 = df_z.groupby('orderID').agg(EN_countSKU_Z=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
+    order_temp2 = df_z.groupby('orderID').agg(EQ_sumQty_Z=pd.NamedAgg(column='total_qty', aggfunc='sum'),
+                                              EV_sumVol_Z=pd.NamedAgg(column='VOL', aggfunc='sum')).reset_index()
+    order_detail_z = pd.merge(order_temp1, order_temp2, how='left', on='orderID', sort=False)
+
+    # 整箱订购——订单维度的SKU数分级
+    order_detail_z['EN_class_Z'] = 0
+    QTY_ClassNum = len(config.QTY_CLASS)
+    for i in range(QTY_ClassNum):
+        order_detail_z.loc[(order_detail_z['EN_countSKU_Z'] > config.QTY_CLASS[i][1]) &
+                           (order_detail_z['EN_countSKU_Z'] <= config.QTY_CLASS[i][2]),
+                           ['EN_class_Z']] = config.QTY_CLASS[i][0]
+
+    # 订单维度的件数分级
+    order_detail_z['EQ_class_Z'] = 0
+    for i in range(QTY_ClassNum):
+        order_detail_z.loc[(order_detail_z['EQ_sumQty_Z'] > config.QTY_CLASS[i][1]) &
+                           (order_detail_z['EQ_sumQty_Z'] <= config.QTY_CLASS[i][2]),
+                           ['EQ_class_Z']] = config.QTY_CLASS[i][0]
+
+    # 订单维度的体积分级
+    order_detail_z['EV_class_Z'] = 0
+    for index, row in order_detail_z.iterrows():
+        for i in range(PCClassNum):
+            if i < toteClassNum:
+                if row['EV_sumVol_Z'] > config.PC_CLASS[i][1] * config.TOTE['valid_vol'] / pow(10, 9) \
+                        and row['EV_sumVol_Z'] <= config.PC_CLASS[i][2] * config.TOTE['valid_vol'] / pow(10, 9):
+                    order_detail_z.loc[index, ['EV_class_Z']] = config.PC_CLASS[i][0]
+                    break
+            else:
+                if row['EV_sumVol_Z'] > config.PC_CLASS[i][1] * config.PALLET_PICK['valid_vol'] / pow(10, 9) \
+                        and row['EV_sumVol_Z'] <= config.PC_CLASS[i][2] * config.PALLET_PICK['valid_vol'] / pow(10,
+                                                                                                                9):
+                    order_detail_z.loc[index, ['EV_class_Z']] = config.PC_CLASS[i][0]
+                    break
+
+    # order_detail 列重排
+    order_detail_z = order_detail_z[['orderID', 'EQ_sumQty_Z', 'EN_countSKU_Z', 'EV_sumVol_Z',
+                                     'EQ_class_Z', 'EN_class_Z', 'EV_class_Z']]
+
+    ### ---------------------------------------------------------------------------------------------------------------
+    ### 散件订购order维度基础信息
+    ### 新建df_s,选取散件订购行，添加 order_sku_tag 标签
+    # s_cols = ['orderID', 'SKU_ID', 'pieceQ', 'VOL',
+    #           'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
+    df_s = df[(df['pieceQ'] > 0)].copy().reset_index()
+    df_s['total_qty'] = df_s['pieceQ']
+    df_s['inLine_tag'] = 'S'
+
+    order_temp1 = df_s.groupby('orderID').agg(EN_countSKU_S=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
+    order_temp2 = df_s.groupby('orderID').agg(EQ_sumQty_S=pd.NamedAgg(column='total_qty', aggfunc='sum'),
+                                              EV_sumVol_S=pd.NamedAgg(column='VOL', aggfunc='sum')).reset_index()
+    order_detail_s = pd.merge(order_temp1, order_temp2, how='left', on='orderID', sort=False)
+
+    # 整箱订购——订单维度的SKU数分级
+    order_detail_s['EN_class_S'] = 0
+    QTY_ClassNum = len(config.QTY_CLASS)
+    for i in range(QTY_ClassNum):
+        order_detail_s.loc[(order_detail_s['EN_countSKU_S'] > config.QTY_CLASS[i][1]) &
+                           (order_detail_s['EN_countSKU_S'] <= config.QTY_CLASS[i][2]),
+                           ['EN_class_S']] = config.QTY_CLASS[i][0]
+
+    # 订单维度的件数分级
+    order_detail_s['EQ_class_S'] = 0
+    for i in range(QTY_ClassNum):
+        order_detail_s.loc[(order_detail_s['EQ_sumQty_S'] > config.QTY_CLASS[i][1]) &
+                           (order_detail_s['EQ_sumQty_S'] <= config.QTY_CLASS[i][2]),
+                           ['EQ_class_S']] = config.QTY_CLASS[i][0]
+
+    # 订单维度的体积分级
+    order_detail_s['EV_class_S'] = 0
+    for index, row in order_detail_s.iterrows():
+        for i in range(PCClassNum):
+            if i < toteClassNum:
+                if row['EV_sumVol_S'] > config.PC_CLASS[i][1] * config.TOTE['valid_vol'] / pow(10, 9) \
+                        and row['EV_sumVol_S'] <= config.PC_CLASS[i][2] * config.TOTE['valid_vol'] / pow(10, 9):
+                    order_detail_s.loc[index, ['EV_class_S']] = config.PC_CLASS[i][0]
+                    break
+            else:
+                if row['EV_sumVol_S'] > config.PC_CLASS[i][1] * config.PALLET_PICK['valid_vol'] / pow(10, 9) \
+                        and row['EV_sumVol_S'] <= config.PC_CLASS[i][2] * config.PALLET_PICK['valid_vol'] / pow(10,
+                                                                                                                9):
+                    order_detail_s.loc[index, ['EV_class_S']] = config.PC_CLASS[i][0]
+                    break
+
+    # order_detail_s 列重排
+    order_detail_s = order_detail_s[['orderID', 'EQ_sumQty_S', 'EN_countSKU_S', 'EV_sumVol_S',
+                                     'EQ_class_S', 'EN_class_S', 'EV_class_S']]
 
     # ---------------------------------------------------------------------------------------------------------------
     # SKU维度基础信息
@@ -289,14 +407,22 @@ def outbound(sku_ref, outbound_org, result_path):
             sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[3]
 
     # --------------------------------------------------------------------------------------------
-    # 根据 orderID 匹配订单详细信息    订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
+    # 根据 orderID 匹配订单详细信息到原始数据   订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
     df = pd.merge(df, order_detail, how='left', on='orderID', sort=False)
+    df = pd.merge(df, order_detail_z, how='left', on='orderID', sort=False)
+    df = pd.merge(df, order_detail_s, how='left', on='orderID', sort=False)
+
+    # 根据 orderID 匹配 整箱订购 订单详细信息    订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
+    df_z = pd.merge(df_z, order_detail_z, how='left', on='orderID', sort=False)
+
+    # 根据 orderID 匹配 散件订购 订单详细信息    订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
+    df_s = pd.merge(df_s, order_detail_s, how='left', on='orderID', sort=False)
 
     # 根据 SKU_ID 匹配SKU详细信息   DIQ_class/DIK_class/DIV_class
     df = pd.merge(df, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class', 'DQ_ABC', 'DK_ABC']],
                   how='left', on='SKU_ID', sort=False)
 
-    rele_df_source = df[['orderID', 'size', 'PC_tag', 'DQ_ABC', 'DK_ABC']]
+    rele_df_source = df[['orderID', 'size', 'inLine_PC_tag', 'DQ_ABC', 'DK_ABC']]
 
     order_group = rele_df_source.groupby('orderID')
     order_relevance = {}
@@ -308,7 +434,7 @@ def outbound(sku_ref, outbound_org, result_path):
         t_size.sort()
         t_size = '-'.join(t_size)
 
-        t_PC = list(filter(None, list(set(v['PC_tag']))))
+        t_PC = list(filter(None, list(set(v['inLine_PC_tag']))))
         # t_PC = list(filter(None, t_PC))
         t_PC.sort()
         t_PC = '-'.join(t_PC)
@@ -330,76 +456,39 @@ def outbound(sku_ref, outbound_org, result_path):
                                              columns=['size_rele', 'PC_rele', 'DQ_ABC_rele', 'DK_ABC_rele'])
     order_relevance = order_relevance.reset_index().rename(columns={'index': 'orderID'})
 
-    # pprint.pprint(order_relevance.head(100))
-    # pprint.pprint(df[['orderID', 'SKU_ID', 'size', 'PC_tag', 'DQ_ABC', 'DK_ABC']].head(100))
-
-    # -------------------------------------------------------------------------------------------
-    # 订单关联字段 相关计算
-
-    # # 新建用来存放 order - 关联字段的 字典
-    #
-    # orderID_list = df['orderID'].unique()
-    # dict_size = dict.fromkeys(orderID_list, set())
-    # dict_PC = dict.fromkeys(orderID_list, set())
-    # dict_DQ_ABC = dict.fromkeys(orderID_list, set())
-    # dict_DK_ABC = dict.fromkeys(orderID_list, set())
-    #
-    #
-    # for index, row in df.iterrows():
-    #     if row['size'] != '':
-    #         dict_size[row['orderID']].add(row['size'])
-    #     if row['PC_tag'] != '':
-    #         dict_PC[row['orderID']].add(row['PC_tag'])
-    #     if row['DQ_ABC'] is not None:
-    #         dict_DQ_ABC[row['orderID']].add(row['DQ_ABC'])
-    #     if row['DK_ABC'] is not None:
-    #         dict_DK_ABC[row['orderID']].add(row['DK_ABC'])
-    #
-    # # for k, v in dict_size.items():
-    # #     print(k, v)
-    #
-    # for k, v in dict_size.items():
-    #     t = list(v)
-    #     print(k, t)
-    #     t.sort()
-    #     dict_size[k] = '-'.join(t)
-    #
-    #     print(k, dict_PC[k])
-    #     v1 = list(dict_PC[k])
-    #     v1.sort()
-    #     dict_PC[k] = '-'.join(v1)
-    #
-    #     print(k, dict_DK_ABC[k])
-    #     v2 = list(dict_DK_ABC[k])
-    #     v2.sort()
-    #     dict_DK_ABC[k] = '-'.join(v2)
-    #
-    #     print(k, dict_DQ_ABC[k])
-    #     v3 = list(dict_DQ_ABC[k])
-    #     v3.sort()
-    #     dict_DQ_ABC = '-'.join(v3)
-    #
-    # df_size = pd.DataFrame.from_dict(dict_size, orient='index', columns=['relevance_size'])
-    # df_size = df_size.reset_index().rename(columns={'index': 'orderID'})
-    #
-    # df_PC = pd.DataFrame.from_dict(dict_PC, orient='index', columns=['relevance_PC'])
-    # df_PC = df_PC.reset_index().rename(columns={'index': 'orderID'})
-    #
-    # df_DK_ABC = pd.DataFrame.from_dict(dict_DK_ABC, orient='index', columns=['relevance_DK_ABC'])
-    # df_DK_ABC = df_DK_ABC.reset_index().rename(columns={'index': 'orderID'})
-    #
-    # df_DQ_ABC = pd.DataFrame.from_dict(dict_DK_ABC, orient='index', columns=['relevance_DQ_ABC'])
-    # df_DQ_ABC = df_DQ_ABC.reset_index().rename(columns={'index': 'orderID'})
-    #
-    # temp1 = pd.merge(df_size, df_PC, how='inner', on='orderID', sort=False)
-    # temp2 = pd.merge(df_DK_ABC, df_DQ_ABC, how='inner', on='orderID', sort=False)
-    #
-    # order_relevance = pd.merge(temp1, temp2, how='inner', on='orderID', sort=False)
-
-    ###-------------------------------------------------------------------------------
-    # 根据 orderID 匹配订单关联字段
-
     df = pd.merge(df, order_relevance, how='left', on='orderID', sort=False)
+
+    ### 新建df,将sku不同订购类型拆分成多行数据，添加 order_sku_tag 标签
+    new_outbound = pd.DataFrame()
+    for index, row in df.iterrows():
+        if row['pieceQ'] > 0:
+            if row['ctnQ'] > 0:
+                if row['pltQ'] > 0:
+                    row['order_sku_tag'] = 'P'
+                    new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+                                                       ignore_index=True)
+                row['order_sku_tag'] = 'C'
+                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
+                                                   ignore_index=True)
+            row['order_sku_tag'] = 'B'
+            new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pieceQ', 'order_sku_tag']], ignore_index=True)
+        elif row['ctnQ'] > 0:
+            if row['pltQ'] > 0:
+                row['order_sku_tag'] = 'P'
+                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+                                                   ignore_index=True)
+            row['order_sku_tag'] = 'C'
+            new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
+                                               ignore_index=True)
+        else:
+            if row['pltQ'] > 0:
+                row['order_sku_tag'] = 'P'
+                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+                                                   ignore_index=True)
+
+    for col in ['pltN', 'pltQ', 'ctnN', 'ctnQ']:
+        if col not in list(new_outbound.columns):
+            new_outbound[col] = 0
 
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
@@ -408,6 +497,10 @@ def outbound(sku_ref, outbound_org, result_path):
     writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
     df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
     order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
+
+    ## 计算SKU维度信息
+    sku_detail = pd.merge(sku_detail, df[['SKU_ID', 'pltQty', 'fullCaseUnit']])
+
     sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
     writer.close()
     writer.save()
@@ -417,6 +510,12 @@ def outbound(sku_ref, outbound_org, result_path):
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}outBound2_{}.xlsx'.format(result_path, str_time))
+
+    ## 0. order and sku维度整托件数，整箱数，散件数折算
+
+    res = out_sku_qtyCtnPlt(df)
+    res.to_excel(excel_writer=writer, sheet_name='00-order_sku_qtyClass', inf_rep='')
+
     ## 1. sku维度透视表
     idx11 = ['size']
     size = out_sku_pivot(df, index=idx11)
@@ -444,6 +543,11 @@ def outbound(sku_ref, outbound_org, result_path):
     pt = out_sku_qty_pivot(df, index=idx15)
     pt.to_excel(excel_writer=writer, sheet_name='15-sku_size_comb', inf_rep='')
 
+    idx16 = ['EIV_class']
+    # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
+    pt = out_sku_qty_pivot(df, index=idx16)
+    pt.to_excel(excel_writer=writer, sheet_name='16-sku_EIV_class', inf_rep='')
+
     """
     ## 2. 订单维度透视表
     """
@@ -456,6 +560,11 @@ def outbound(sku_ref, outbound_org, result_path):
     idx22 = ['order_structure', 'size_rele']
     order_releSize = out_order_pivot(df, index=idx22)
     order_releSize.to_excel(excel_writer=writer, sheet_name='22-order_sizerele', inf_rep='')
+
+    idx23 = ['order_date']
+    toteV = config.TOTE['valid_vol']
+    daily_order = order_num(df, toteV=toteV, index=idx23)
+    daily_order.to_excel(excel_writer=writer, sheet_name='23-dailyOrder', inf_rep='')
 
     """
     ## 3. ABC透视表
@@ -496,30 +605,64 @@ def outbound(sku_ref, outbound_org, result_path):
     order_type = out_order_pivot(df, index=idx41)
     order_type.to_excel(excel_writer=writer, sheet_name='41-EQ_class', inf_rep='')
 
+    idx411 = ['EQ_class_Z']
+    order_type = out_order_pivot(df_z, index=idx411)
+    order_type.to_excel(excel_writer=writer, sheet_name='41.1-EQ_class_Z', inf_rep='')
+
+    idx412 = ['EQ_class_S']
+    order_type = out_order_pivot(df_s, index=idx412)
+    order_type.to_excel(excel_writer=writer, sheet_name='41.2-EQ_class_S', inf_rep='')
+
     # EK_class 透视
     idx42 = ['EN_class']
     order_type = out_order_pivot(df, index=idx42)
     order_type.to_excel(excel_writer=writer, sheet_name='42-EN_class', inf_rep='')
 
+    idx421 = ['EN_class_Z']
+    order_type = out_order_pivot(df_z, index=idx421)
+    order_type.to_excel(excel_writer=writer, sheet_name='42.1-EN_class_Z', inf_rep='')
+
+    idx422 = ['EN_class_S']
+    order_type = out_order_pivot(df_s, index=idx422)
+    order_type.to_excel(excel_writer=writer, sheet_name='42.2-EN_class_S', inf_rep='')
+
+    # EK_class 透视
+    idx43 = ['EV_class']
+    order_type = out_order_pivot(df, index=idx43)
+    order_type.to_excel(excel_writer=writer, sheet_name='43-EV_class', inf_rep='')
+
+    idx431 = ['EV_class_Z']
+    order_type = out_order_pivot(df_z, index=idx431)
+    order_type.to_excel(excel_writer=writer, sheet_name='43.1-EV_class_Z', inf_rep='')
+
+    idx432 = ['EV_class_S']
+    order_type = out_order_pivot(df_s, index=idx432)
+    order_type.to_excel(excel_writer=writer, sheet_name='43.2-EV_class_S', inf_rep='')
+
     # order-structure & EQ 透视
-    idx43 = ['order_structure', 'EQ_class']
-    order_releSize = out_order_pivot(df, index=idx43)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='43-order&EQ', inf_rep='')
+    # idx44 = ['order_structure', 'EQ_class']
+    # order_releSize = out_order_pivot(df, index=idx44)
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='44-order&EQ', inf_rep='')
+    #
+    # # order-structure & EN 透视
+    # idx45 = ['order_structure', 'EN_class']
+    # order_releSize = out_order_pivot(df, index=idx45)
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='45-order&EN', inf_rep='')
+    #
+    # # order-structure & EN 透视
+    # idx46 = ['order_structure', 'EV_class']
+    # order_releSize = out_order_pivot(df, index=idx46)
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='46-order&EV', inf_rep='')
 
-    # order-structure & EN 透视
-    idx44 = ['order_structure', 'EN_class']
-    order_releSize = out_order_pivot(df, index=idx44)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='44-order&EN', inf_rep='')
-
-    # size & order-structure & EQ 透视
-    idx45 = ['size_rele', 'order_structure', 'EQ_class']
-    order_releSize = out_order_pivot(df, index=idx45)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='45-order&EQ', inf_rep='')
-
-    # size & order-structure & EQ 透视
-    idx46 = ['size_rele', 'order_structure', 'EN_class']
-    order_releSize = out_order_pivot(df, index=idx46)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='46-order&EN', inf_rep='')
+    # # size & order-structure & EQ 透视
+    # idx46 = ['size_rele', 'order_structure', 'EQ_class']
+    # order_releSize = out_order_pivot(df, index=idx46)
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='45-order&EQ', inf_rep='')
+    #
+    # # size & order-structure & EQ 透视
+    # idx47 = ['size_rele', 'order_structure', 'EN_class']
+    # order_releSize = out_order_pivot(df, index=idx47)
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='46-order&EN', inf_rep='')
 
     """
     ## 5. PC透视表

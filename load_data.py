@@ -29,7 +29,7 @@ def load_outbound(outbound_file):
         df = pd.read_csv(outbound_file)
 
     df.columns = ['warehouse', 'order_date', 'order_week', 'order_state', 'm_orderID',
-                  'orderID', 'isSplit', 'order_type', 'operation_mode', 'SKU_ID', 'qty',
+                  'orderID', 'isSplit', 'order_type', 'operation_mode', 'SKU_ID', 'total_qty',
                   'deli_type', 'package_size', 'package_weight', 'package_long', 'package_width',
                   'package_height', 'package_num', 'province', 'city']
     return df
