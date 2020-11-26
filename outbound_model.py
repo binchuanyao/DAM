@@ -285,7 +285,7 @@ def outbound(sku_ref, outbound_org, result_path):
     #           'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
     df_s = df[(df['pieceQ'] > 0)].copy().reset_index()
     df_s['total_qty'] = df_s['pieceQ']
-    df_s['inLine_tag'] = 'S'
+    df_s['inline_tag'] = 'S'
 
     order_temp1 = df_s.groupby('orderID').agg(EN_countSKU_S=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
     order_temp2 = df_s.groupby('orderID').agg(EQ_sumQty_S=pd.NamedAgg(column='total_qty', aggfunc='sum'),
@@ -458,37 +458,81 @@ def outbound(sku_ref, outbound_org, result_path):
 
     df = pd.merge(df, order_relevance, how='left', on='orderID', sort=False)
 
-    ### 新建df,将sku不同订购类型拆分成多行数据，添加 order_sku_tag 标签
-    new_outbound = pd.DataFrame()
-    for index, row in df.iterrows():
-        if row['pieceQ'] > 0:
-            if row['ctnQ'] > 0:
-                if row['pltQ'] > 0:
-                    row['order_sku_tag'] = 'P'
-                    new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
-                                                       ignore_index=True)
-                row['order_sku_tag'] = 'C'
-                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
-                                                   ignore_index=True)
-            row['order_sku_tag'] = 'B'
-            new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pieceQ', 'order_sku_tag']], ignore_index=True)
-        elif row['ctnQ'] > 0:
-            if row['pltQ'] > 0:
-                row['order_sku_tag'] = 'P'
-                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
-                                                   ignore_index=True)
-            row['order_sku_tag'] = 'C'
-            new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
-                                               ignore_index=True)
-        else:
-            if row['pltQ'] > 0:
-                row['order_sku_tag'] = 'P'
-                new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
-                                                   ignore_index=True)
+    # ### 新建df,将sku不同订购类型拆分成多行数据，添加 order_sku_tag 标签
+    # new_outbound = pd.DataFrame()
+    # for index, row in df.iterrows():
+    #     if row['pieceQ'] > 0:
+    #         if row['ctnQ'] > 0:
+    #             if row['pltQ'] > 0:
+    #                 row['order_sku_tag'] = 'P'
+    #                 new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+    #                                                    ignore_index=True)
+    #             row['order_sku_tag'] = 'C'
+    #             new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
+    #                                                ignore_index=True)
+    #         row['order_sku_tag'] = 'B'
+    #         new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pieceQ', 'order_sku_tag']], ignore_index=True)
+    #     elif row['ctnQ'] > 0:
+    #         if row['pltQ'] > 0:
+    #             row['order_sku_tag'] = 'P'
+    #             new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+    #                                                ignore_index=True)
+    #         row['order_sku_tag'] = 'C'
+    #         new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'ctnN', 'ctnQ', 'order_sku_tag']],
+    #                                            ignore_index=True)
+    #     else:
+    #         if row['pltQ'] > 0:
+    #             row['order_sku_tag'] = 'P'
+    #             new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'pltN', 'pltQ', 'order_sku_tag']],
+    #                                                ignore_index=True)
+    #
+    # for col in ['pltN', 'pltQ', 'ctnN', 'ctnQ']:
+    #     if col not in list(new_outbound.columns):
+    #         new_outbound[col] = 0
 
-    for col in ['pltN', 'pltQ', 'ctnN', 'ctnQ']:
-        if col not in list(new_outbound.columns):
-            new_outbound[col] = 0
+    ### --------------------------------------------------------------------------------
+    ### 将整箱/散件行组合
+    df_zs = df_z.append(df_s).copy().reset_index()
+    # print('df_zs rows: ' , df_zs.shape)
+    # print('df_zs columns: ', df_zs.columns)
+
+    ## 添加 order维度的 EV_class
+    df_zs = pd.merge(df_zs, order_detail[['orderID', 'EV_class']], on='orderID', how='left', sort=False)
+
+    df_zs['EQ_class_all'] = ''
+    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EQ_class_all']] = df_zs['EQ_class_Z']
+    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EQ_class_all']] = df_zs['EQ_class_S']
+
+    df_zs['EN_class_all'] = ''
+    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EN_class_all']] = df_zs['EN_class_Z']
+    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EN_class_all']] = df_zs['EN_class_S']
+
+    df_zs['EV_class_all'] = ''
+    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EV_class_all']] = df_zs['EV_class_Z']
+    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EV_class_all']] = df_zs['EV_class_S']
+
+    ### 拆分整箱/散件后的 EIV分级
+    df_zs['line_vol'] = df_zs['total_qty'] * df_zs['corrVol']
+    df_zs['EIV_class_zs'] = ''
+    toteClassNum = len(config.TOTE_CLASS_INTERVAL) - 1
+    PCClassNum = len(config.PC_CLASS)
+    for index, row in df_zs.iterrows():
+        if row['size'] == config.SIZE['type'][3]:
+            df_zs.loc[index, ['EIV_class_zs']] = row['size']
+        else:
+            for i in range(PCClassNum):
+                if i < toteClassNum:
+                    if row['size'] == config.SIZE['type'][0] \
+                            and row['VOL'] > config.PC_CLASS[i][1] * config.TOTE['valid_vol'] / pow(10, 9) \
+                            and row['VOL'] <= config.PC_CLASS[i][2] * config.TOTE['valid_vol'] / pow(10, 9):
+                        df_zs.loc[index, ['EIV_class_zs']] = config.PC_CLASS[i][0]
+                        break
+                else:
+                    if row['VOL'] > config.PC_CLASS[i][1] * config.PALLET_PICK['valid_vol'] / pow(10, 9) and \
+                            row['VOL'] <= config.PC_CLASS[i][2] * config.PALLET_PICK['valid_vol'] / pow(10, 9):
+                        df_zs.loc[index, ['EIV_class_zs']] = config.PC_CLASS[i][0]
+                        break
+
 
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
@@ -496,6 +540,7 @@ def outbound(sku_ref, outbound_org, result_path):
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
     df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
+
     order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
 
     ## 计算SKU维度信息
@@ -664,13 +709,23 @@ def outbound(sku_ref, outbound_org, result_path):
     # order_releSize = out_order_pivot(df, index=idx47)
     # order_releSize.to_excel(excel_writer=writer, sheet_name='46-order&EN', inf_rep='')
 
+    ## 增加 order维度，订单行整箱/散件拆分的 EQ, EN分级
+
+    idx44 = ['EV_class', 'inline_tag', 'EQ_class_all', 'EN_class_all']
+    res = out_order_pivot(df_zs, index=idx44)
+    res.to_excel(excel_writer=writer, sheet_name='44-EV_EQ_EN', inf_rep='')
+
+    idx45 = ['EV_class', 'inline_tag', 'EIV_class_zs']
+    res = out_order_pivot(df_zs, index=idx45)
+    res.to_excel(excel_writer=writer, sheet_name='45-EV_EIV(zs)', inf_rep='')
+
     """
     ## 5. PC透视表
     """
     # EQ_class 透视
-    idx51 = ['EV_class']
+    idx51 = ['EV_class', 'EIV_class']
     order_type = out_order_pivot(df, index=idx51)
-    order_type.to_excel(excel_writer=writer, sheet_name='51-EV_class', inf_rep='')
+    order_type.to_excel(excel_writer=writer, sheet_name='51-EV_EIV_class', inf_rep='')
 
     # EK_class 透视
     idx52 = ['EV_class', 'size_rele']
