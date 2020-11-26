@@ -82,10 +82,10 @@ class Calculate:
         pass
 
 
-def calu_stock_data(original):
-    # 加载配置参数
-    config = Config()
-    config.run()
+def calu_stock_data(original, config=None):
+    if config is None:
+        config = Config()
+        config.run()
 
     # 显示所有列
     pd.set_option('display.max_columns', None)
@@ -954,8 +954,7 @@ def calu_stock_data(original):
 
     # 73 BV	每料箱重量(kg)(按额定体积折算)_含全部修正
     df['vol_toteWt'] = 0
-    df.loc[(df['corrSW_isAbnormal_tag'] == 'N') & (df['size'] == config.SIZE['type'][0]) &
-           (config.TOTE['valid_vol'] / df['corrVol'] * df['corrWeight'] <= config.TOTE['weight_upper']),
+    df.loc[(df['corrSW_isAbnormal_tag'] == 'N') & (df['size'] == config.SIZE['type'][0]),
            ['vol_toteWt']] = config.TOTE['valid_vol'] / df['corrVol'] * df['corrWeight'] + config.TOTE['unit_weight']
 
     # 74 BW	每料箱重量(kg)(按额定体积折算&重量折算)_含全部修正
@@ -965,8 +964,7 @@ def calu_stock_data(original):
            ['toteWt']] = config.TOTE['valid_vol'] / df['corrVol'] * df['corrWeight'] + config.TOTE['unit_weight']
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') & (df['size'] == config.SIZE['type'][0]) &
            (config.TOTE['valid_vol'] / df['corrVol'] * df['corrWeight'] > config.TOTE['weight_upper']),
-           ['toteWt']] = config.TOTE['weight_upper'] / df['corrWeight'] * config.TOTE['rate'] * df['corrWeight'] + \
-                         config.TOTE['unit_weight']
+           ['toteWt']] = config.TOTE['weight_upper'] + config.TOTE['unit_weight']
 
     # 根据料箱和托盘装载件数，计算库存折合料箱数&托盘数
     # 83 CF 月度日均库存折合料箱数量(按额定体积折算 & 重量折算)_现状
@@ -987,8 +985,10 @@ def calu_stock_data(original):
     # 76 BY	托盘重量分级(按额定体积&重量折算)_成托
     df['pltWt_class_palletized'] = np.NAN
     df.loc[(df['corrSW_isAbnormal_tag'] == 'Y'), ['pltWt_class_palletized']] = df['corrSW_isAbnormal_state']
-    df.loc[(df['size'] == config.SIZE['type'][3]), ['pltWt_class_palletized']] = config.SIZE['type'][3]
-    df.loc[(df['daily_stock_pltN'] < 0.5), ['pltWt_class_palletized']] = "00当前库存不成托"
+    df.loc[(df['pltWt_class_palletized'].isna()) &
+           (df['size'] == config.SIZE['type'][3]), ['pltWt_class_palletized']] = config.SIZE['type'][3]
+    df.loc[(df['pltWt_class_palletized'].isna()) &
+           (df['daily_stock_pltN'] < 0.5), ['pltWt_class_palletized']] = "00当前库存不成托"
 
     pltWtClassNum = len(config.PLT_WEIGHT_CLASS)
     # print('pltWtClassNum:')
@@ -998,7 +998,8 @@ def calu_stock_data(original):
     # print('*'*10 + 'config.PLT_WEIGHT_CLASS' + '*'*10)
     # print("\n".join(str(i) for i in config.PLT_WEIGHT_CLASS))
     for i in range(pltWtClassNum):
-        df.loc[(df['pltWt'] > config.PLT_WEIGHT_INTERVAL[i]) &
+        df.loc[(df['pltWt_class_palletized'].isna()) &
+               (df['pltWt'] > config.PLT_WEIGHT_INTERVAL[i]) &
                (df['pltWt'] <= config.PLT_WEIGHT_INTERVAL[i + 1]),
                ['pltWt_class_palletized']] = config.PLT_WEIGHT_CLASS[i][0]
 
@@ -1009,7 +1010,8 @@ def calu_stock_data(original):
 
     # pltWtClassNum = len(config.PLT_WEIGHT_CLASS)
     for i in range(pltWtClassNum):
-        df.loc[(df['pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
+        df.loc[(df['pltWt_class_all'].isna()) &
+               (df['pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
                (df['pltWt'] <= config.PLT_WEIGHT_CLASS[i][2]),
                ['pltWt_class_all']] = config.PLT_WEIGHT_CLASS[i][0]
 
@@ -1020,7 +1022,8 @@ def calu_stock_data(original):
     df.loc[(df['size'] == config.SIZE['type'][3]), ['vol_pltWt_class']] = config.SIZE['type'][3]
 
     for i in range(pltWtClassNum):
-        df.loc[(df['corr_vol_pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
+        df.loc[(df['vol_pltWt_class'].isna()) &
+               (df['corr_vol_pltWt'] > config.PLT_WEIGHT_CLASS[i][1]) &
                (df['corr_vol_pltWt'] <= config.PLT_WEIGHT_CLASS[i][2]),
                ['vol_pltWt_class']] = config.PLT_WEIGHT_CLASS[i][0]
 
@@ -1036,6 +1039,20 @@ def calu_stock_data(original):
         df.loc[(df['toteWt'] > config.TOTE_WEIGHT_CLASS[i][1]) &
                (df['toteWt'] <= config.TOTE_WEIGHT_CLASS[i][2]),
                ['toteWt_class']] = config.TOTE_WEIGHT_CLASS[i][0]
+
+    ### ------------------------------------------------------------
+    ###  增加按额定体积折算的 料箱重量分级
+    df['vol_toteWt_class'] = np.NAN
+    df.loc[(df['corrSW_isAbnormal_tag'] == 'Y'), ['vol_toteWt_class']] = df['corrSW_isAbnormal_state']
+    df.loc[(df['vol_toteWt_class'].isna()), ['vol_toteWt_class']] = df['size']
+
+    toteWtClassNum = len(config.TOTE_WEIGHT_CLASS)
+    # print('*'*10 + 'config.TOTE_WEIGHT_CLASS' + '*'*10)
+    # print("\n".join(str(i) for i in config.TOTE_WEIGHT_CLASS))
+    for i in range(toteWtClassNum):
+        df.loc[(df['vol_toteWt'] > config.TOTE_WEIGHT_CLASS[i][1]) &
+               (df['vol_toteWt'] <= config.TOTE_WEIGHT_CLASS[i][2]),
+               ['vol_toteWt_class']] = config.TOTE_WEIGHT_CLASS[i][0]
 
     '''
     库存相关字段
