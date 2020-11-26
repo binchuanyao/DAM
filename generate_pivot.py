@@ -16,7 +16,6 @@ def generate_pivot_table(df, outFileName):
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}stockClass2_{}.xlsx'.format(outFileName, str_time))
-
     workbook = writer.book
     workbook.add_format(
         {'bold': False, 'font_size': 8, 'font_name': u'Microsoft YaHei Light'})
@@ -132,15 +131,15 @@ def generate_pivot_table(df, outFileName):
     '''
     # 113透视_CLASS1_O1
     '''
-    class_df = df.loc[(df['stock_qty_isNonZero'] == 'Y'),
-                      ['SKU_ID', 'size', 'I_class', 'II_class', 'III_class', 'IV_class',
-                       'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
-                       'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-                       'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN',
-                       'current_stockQty', 'current_pickQty']]
-    idx13 = ['IV_class']
-    class_pt = general_class(class_df, sku=sku, index=idx13, pt_col=pt_col_com, isAvg=True)
-    class_pt.to_excel(excel_writer=writer, sheet_name='13-class_pt', inf_rep='')
+    # class_df = df.loc[(df['stock_qty_isNonZero'] == 'Y'),
+    #                   ['SKU_ID', 'size', 'I_class', 'II_class', 'III_class', 'IV_class',
+    #                    'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                    'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
+    #                    'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN',
+    #                    'current_stockQty', 'current_pickQty']]
+    # idx13 = ['IV_class']
+    # class_pt = general_class(class_df, sku=sku, index=idx13, pt_col=pt_col_com, isAvg=True)
+    # class_pt.to_excel(excel_writer=writer, sheet_name='13-class_pt', inf_rep='')
 
     plt_col = ['daily_stock_sku', 'daily_stock_qty', 'daily_deli_qty',
                'current_pltStockN', 'current_pltPickN',
@@ -155,7 +154,7 @@ def generate_pivot_table(df, outFileName):
     114透视_Size&Class1_O1
     '''
     idx14 = ['size', 'IV_class']
-    size_class_pt = general_class(class_df, sku=sku, index=idx14, pt_col=pt_col_com)
+    size_class_pt = general_class(df, sku=sku, index=idx14, pt_col=pt_col_com)
     size_class_pt.to_excel(excel_writer=writer, sheet_name='14-size_class_pt', inf_rep='')
 
     '''
@@ -205,13 +204,17 @@ def generate_pivot_table(df, outFileName):
     123 料箱重量分级 
     '''
     toteWt_class_df = df.loc[(df['sku_state'] == '良品'),
-                             ['SKU_ID', 'toteWt_class',
+                             ['SKU_ID', 'toteWt_class', 'vol_toteWt_class',
                               'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
                               'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN',
                               'daily_deli_vol_m']]
     idx24 = ['toteWt_class']
     toteWt_class = general_class(toteWt_class_df, sku=sku, index=idx24, isCumu=True)
     toteWt_class.to_excel(excel_writer=writer, sheet_name='24-toteWt_class', inf_rep='')
+
+    idx25 = ['vol_toteWt_class']
+    toteWt_class = general_class(toteWt_class_df, sku=sku, index=idx25, isCumu=True)
+    toteWt_class.to_excel(excel_writer=writer, sheet_name='25-vol_toteWt_class', inf_rep='')
 
     ### --------------------------------------------
     '''
@@ -351,21 +354,22 @@ def generate_pivot_table(df, outFileName):
     design_equType_size = design_equ_class(df, index=idx63)
     design_equType_size.to_excel(excel_writer=writer, sheet_name='63-design_equType_size', inf_rep='')
 
+    layout_format(writer)
+
     # 保存文件
     writer.save()
     writer.close()
 
 
-def get_stock_factor(df, outFileName):
-    config = Config()
-    config.run()
-    writer = pd.ExcelWriter(outFileName)
+def get_stock_factor(df, config, writer):
+    plt_long = config.PALLET_STOCK['long']
+    plt_width = config.PALLET_STOCK['width']
 
-    d1 = pd.DataFrame.from_dict(config.PALLET_STOCK, orient='index', columns=['PALLET_STOCK']).reset_index()
-    d2 = pd.DataFrame.from_dict(config.PALLET_PICK, orient='index', columns=['PALLET_PICK']).reset_index()
-
-    d = pd.merge(d1, d2, on='index', how='outer')
-    d.to_excel(excel_writer=writer, sheet_name='0-basic', inf_rep='')
+    # d1 = pd.DataFrame.from_dict(config.PALLET_STOCK, orient='index', columns=['PALLET_STOCK']).reset_index()
+    # d2 = pd.DataFrame.from_dict(config.PALLET_PICK, orient='index', columns=['PALLET_PICK']).reset_index()
+    #
+    # d = pd.merge(d1, d2, on='index', how='outer')
+    # d.to_excel(excel_writer=writer, sheet_name='0-basic', inf_rep='')
 
     ### 存储位托盘系数
     palletStock_factor = pd.pivot_table(df, index='warehouse',
@@ -379,7 +383,9 @@ def get_stock_factor(df, outFileName):
     palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
             palletStock_factor['current_pltStockN'] *
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
-    palletStock_factor.to_excel(excel_writer=writer, sheet_name='1-stock_factor', inf_rep='')
+    palletStock_factor.to_excel(excel_writer=writer,
+                                sheet_name='stock_factor_{}_{}'.format(plt_long, plt_width),
+                                inf_rep='')
 
     ### 拣选位托盘系数
     palletPick_factor = pd.pivot_table(df, index='warehouse', values=['current_pltPickN', 'current_pickVol_m'],
@@ -390,11 +396,10 @@ def get_stock_factor(df, outFileName):
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
     # write to file
-    palletPick_factor.to_excel(excel_writer=writer, sheet_name='2-pick_factor', inf_rep='')
+    palletPick_factor.to_excel(excel_writer=writer,
+                               sheet_name='pick_factor_{}_{}'.format(plt_long, plt_width),
+                               inf_rep='')
 
-    # 保存文件
-    writer.save()
-    writer.close()
 
 
 def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True, isAvg=False):
@@ -469,6 +474,7 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
             result_pt['avg_vol'] = result_pt['daily_stock_vol_m'] / result_pt['daily_stock_qty']
         if 'daily_stock_qty' in result_pt.columns and 'daily_stock_weight' in result_pt.columns:
             result_pt['avg_weight'] = result_pt['daily_stock_weight'] / result_pt['daily_stock_qty']
+        result_pt['kg/m3'] = result_pt['avg_weight'] / result_pt['avg_vol']
         if 'current_stockQty' in result_pt.columns and 'current_pickQty' in result_pt.columns and \
                 'current_pltStockN' in result_pt.columns and 'current_pltPickN' in result_pt.columns:
             result_pt['avg_pltQty'] = (result_pt['current_stockQty'] + result_pt['current_pickQty']) / \
@@ -481,6 +487,8 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -518,6 +526,8 @@ def avg_pltQty_class(df, index, sku=None):
             lambda x: '{:,}'.format(x))
 
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -573,6 +583,8 @@ def abc_class(df, index, sku=None, pt_col=None, isCumu=True, isSimple=True):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -632,6 +644,8 @@ def pc_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -715,6 +729,8 @@ def current_equ_class(df, index, sku=None, pt_col=None, isCumu=False):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -757,6 +773,8 @@ def design_equ_class(df, index, sku=None, pt_col=None, isCumu=False):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -844,6 +862,8 @@ def out_sku_pivot(df, index, sku=None, pt_col=None, isCumu=True):
     #     'font-size': '10pt',
     #     'bold': 'Microsoft YaHei UI Light'
     # })
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -903,6 +923,8 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -975,6 +997,8 @@ def out_order_sku_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Tru
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -1041,6 +1065,8 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -1055,7 +1081,7 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
               'total_qty']
 
     order_pt_col = ['pltN', 'pltQ', 'ctnN', 'ctnQ']
-    sku_pt_col = ['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
+    # sku_pt_col = ['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
     sku_C_pt_col = ['ctn2pltN']
     sku_B_pt_col = ['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder']
     df_temp = df[['orderID', 'SKU_ID', 'order_ZS_tag', 'pltN', 'pltQ', 'ctnN', 'ctnQ', 'pieceQ']]
@@ -1103,7 +1129,27 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
     # print('new_outbound rows: ', new_outbound.shape[0])
 
     writer = pd.ExcelWriter('D:/Work/Project/09蜜思肤/Output/msf_0000_new_outbound.xlsx')
+    workbook = writer.book
+    fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light',
+                               'align': 'center',
+                               'valign': 'vcenter',
+                               'font_size': 9
+                               })
+    border_format = workbook.add_format({'border': 1})
+    percent_fmt = workbook.add_format({'num_format': '0.00%'})
+    amt_fmt = workbook.add_format({'num_format': '#,##0'})
+
+    l_end = len(new_outbound.index)
+    new_outbound.index = range(1, len(new_outbound) + 1)
+    new_outbound.index.name = '序号'
     new_outbound.to_excel(excel_writer=writer, sheet_name='01-new_outbound')
+    worksheet1 = writer.sheets['01-new_outbound']
+    worksheet1.set_column('A:Z', 12, fmt)
+    worksheet1.conditional_format('A0:Z{}'.format(l_end), {'type': 'no_blanks', 'format': border_format})
+    #
+    # for col_num, value in enumerate(new_outbound.columns.values):
+    #     worksheet1.write(1, col_num, value, fmt)
+    # new_outbound.to_excel(excel_writer=writer, sheet_name='01-new_outbound')
     writer.save()
     writer.close()
 
@@ -1191,6 +1237,8 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -1209,7 +1257,7 @@ def order_num(df, index, toteV):
 
     df_order = df[index + order + ['pieceVol']].groupby(index + order).agg(
         sumPieceVol=pd.NamedAgg(column='pieceVol', aggfunc='sum')).reset_index()
-    print(toteV)
+    # print(toteV)
     df_order['piece2toteN'] = df_order['sumPieceVol'] / toteV
 
     pt_col = ['pltN', 'ctnN', 'piece2toteN']
@@ -1235,6 +1283,8 @@ def order_num(df, index, toteV):
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
 
 
@@ -1313,43 +1363,9 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
     result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
     return result_pt
-
-
-def data_format(df, columns):
-    # print(columns)
-    # print('-' * 30)
-    for col in columns:
-        # df.loc[np.isinf(df[col]), col] = np.NAN
-        if '%' in col:
-            # print('%%%', col)
-            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
-        elif 'avg_vol' in col or 'avg_weight' in col:
-            # print('4位小数,千分位', col)
-            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 4)).apply(
-                lambda x: '{:,}'.format(x))
-        elif 'per' in col or 'days' in col or 'avg' in col or 'vol' in col:
-            # print('2位小数,千分位', col)
-            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
-                lambda x: '{:,}'.format(x))
-        elif 'piece2ctn_remainder' in col:
-            # print('整数,千分位', col)
-            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
-        elif ('N' in col or 'Q' in col) and ('2' not in col):
-            # print('整数,千分位', col)
-            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
-        elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):
-            # print('整数,千分位', col)
-            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
-        else:
-            # print('2位小数,千分位', col)
-            df.loc[df[col] > 0, col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
-                lambda x: '{:,}'.format(x))
-        if 'cumu' in col:
-            df.loc[(df[df.columns[0]] == 'All'), [col]] = ''
-        df.loc[(df[col] == 'inf'), [col]] = ''
-    return df
-
 
 def trans(columns):
     if len(columns) > 0:
@@ -1367,9 +1383,12 @@ def trans(columns):
             # col = col.replace('IV_class', '四级类目')
             col = col.replace('fullCaseUnit', '原箱装箱数(件)')
 
+            col = col.replace('order_ZS_tag', '订单整箱/散件订购标识')
+            col = col.replace('order_PCB_tag', '订单行订购单元标识')
             col = col.replace('EQ', '订单件数')
             col = col.replace('EN', '订单行数')
             col = col.replace('EV', '订单体积')
+            col = col.replace('inline_tag', '订单行整箱/散件订购标识')
             col = col.replace('_Z', '-整箱订购')
             col = col.replace('_S', '-散件订购')
 
@@ -1429,3 +1448,62 @@ def trans(columns):
             new_col.append(col)
 
     return new_col
+
+
+def data_format(df, columns):
+    # print(columns)
+    # print('-' * 30)
+    for col in columns:
+        # df.loc[np.isinf(df[col]), col] = np.NAN
+        if '%' in col:
+            # print('%%%', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
+        elif 'avg_vol' in col or 'avg_weight' in col:
+            # print('4位小数,千分位', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 4)).apply(
+                lambda x: '{:,}'.format(x))
+        elif 'piece2ctn_remainder' in col or 'kg/m3' in col or 'avg_pltQty' in col:
+            # print('整数,千分位', col)
+            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
+        elif 'per' in col or 'days' in col or 'avg' in col or 'vol' in col:
+            # print('2位小数,千分位', col)
+            df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
+                lambda x: '{:,}'.format(x))
+        elif ('N' in col or 'Q' in col) and ('2' not in col):
+            # print('整数,千分位', col)
+            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
+        elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):
+            # print('整数,千分位', col)
+            df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
+        else:
+            # print('2位小数,千分位', col)
+            df.loc[df[col] > 0, col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
+                lambda x: '{:,}'.format(x))
+        if 'cumu' in col:
+            df.loc[(df[df.columns[0]] == 'All'), [col]] = ''
+        df.loc[(df[col] == 'inf'), [col]] = ''
+    return df
+
+
+def layout_format(writer):
+    cap_list = [chr(i) for i in range(65, 91)]
+    # writer = pd.ExcelWriter(file)
+    workbook = writer.book
+    fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light',
+                               'align': 'center',
+                               'valign': 'vcenter',
+                               'font_size': 9
+                               })
+    border_format = workbook.add_format({'border': 1})
+    worksheets = writer.sheets
+    # print(worksheets)
+    # print(type(worksheets))
+    for sheet in worksheets.values():
+        # rows = sheet.get_row()
+        # cols = sheet.get_col()
+        # cols_name = cap_list[cols]
+        sheet.set_column('A0:Z100', 12, fmt)
+        sheet.conditional_format('A0:Z20', {'type': 'no_blanks', 'format': border_format})
+        # sheet.conditional_format('A0:{}{}'.format('M', 10), {'format': border_format})
+
+    writer.save()
