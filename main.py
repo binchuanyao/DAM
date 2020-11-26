@@ -63,13 +63,7 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     ### -------------------------------------------------------------------------------
     pt1 = datetime.now()
 
-    factor_path = 'D:/Work/Project/09蜜思肤/Output/msf_stock_factor.xlsx'
-
-    ### -------------------------------------------------------------------------------
-    ## 计算不同托盘尺寸下存储区/拣选区的存储系数
-    # get_stock_factor(df, outFileName=factor_path)
-
-    # generate_pivot_table(df, outFileName=result_path)
+    generate_pivot_table(df, outFileName=result_path)
     pt2 = datetime.now()
     print('-' * 50)
     print('库存分析字段计算及文件写入时间：', (pt2 - pt1).seconds, ' S')
@@ -86,9 +80,41 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
         outTime3 = datetime.now()
         print('出库分析字段计算时间&文件写入时间：', (outTime3 - outTime2).seconds, ' S')
 
-def gene_factor():
-    plt_config = [1200, 1000]
-    print('git test')
+
+def gene_factor(data_path):
+    ### -------------------------------------------------------------------------------
+    org = load_data(data_path)
+
+    wriTime1 = datetime.now()
+    str_time = wriTime1.strftime('%m_%d')
+
+    factor_path = 'D:/Work/Project/09蜜思肤/Output/msf_stock_factor{}.xlsx'.format(str_time)
+
+    ### -------------------------------------------------------------------------------
+    # 计算不同托盘尺寸下存储区/拣选区的存储系数
+    plt_list = [[1200, 1000],
+                [1200, 800],
+                [1100, 1100],
+                [1100, 1000],
+                [1000, 800]]
+
+    writer = pd.ExcelWriter(factor_path)
+    for i in range(len(plt_list)):
+        config = Config()
+        config.run()
+        config.PALLET_STOCK['long'] = plt_list[i][0]
+        config.PALLET_STOCK['width'] = plt_list[i][1]
+
+        config.PALLET_PICK['long'] = plt_list[i][0]
+        config.PALLET_PICK['width'] = plt_list[i][1]
+
+        df, outBound_ref, IV_class_data, sku_pc_class = calu_stock_data(org, config=config)
+        get_stock_factor(df, config, writer=writer)
+
+    # 保存文件
+    writer.save()
+    writer.close()
+
 
 if __name__ == '__main__':
     startTime = datetime.now()
@@ -119,6 +145,8 @@ if __name__ == '__main__':
     # run(stock_file, org_path, result_path)
 
     run(stock_file, org_path, result_path, outbound_path=outbound_file, outResult_path=out_result_path)
+
+    # gene_factor(stock_file)
 
     print('-' * 20 + '程序运行完成！' + '-' * 20 + '')
     endTime = datetime.now()
