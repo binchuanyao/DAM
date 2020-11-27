@@ -264,14 +264,14 @@ def generate_pivot_table(df, outFileName):
     idx40 = ['daily_stock_ctnQty_class']
     col = ['daily_stock_pltN', 'daily_stock_toteN', 'daily_stock_qty', 'daily_deli_sku',
            'daily_deli_pltN', 'daily_deli_toteN', 'daily_deli_qty']
-    stock_PC_class = pc_class(df, index=idx40, pt_col=col)
+    stock_PC_class = pc_class(df, index=idx40, pt_col=col, isCumu=True)
     stock_PC_class.to_excel(excel_writer=writer, sheet_name='40-daily_stock_ctnQty_class', inf_rep='')
 
     # 141透视_P&C-CLASS-V&W_O1
     idx41 = ['daily_stock_PC_class']
     # col = ['daily_stock_pltN', 'daily_stock_toteN', 'daily_stock_qty', 'daily_deli_sku',
     #        'daily_deli_pltN', 'daily_deli_toteN', 'daily_deli_qty']
-    stock_PC_class = pc_class(df, index=idx41, pt_col=col)
+    stock_PC_class = pc_class(df, index=idx41, pt_col=col, isCumu=True)
     stock_PC_class.to_excel(excel_writer=writer, sheet_name='41-stock_PC_class', inf_rep='')
 
     # 142透视_SIZE-P&C-CLASS-V&W_O1
@@ -1043,9 +1043,9 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
         result_pt.loc[result_pt[index[0]] == 'All', [pt_col[i]]] = df[pt_col[i]].sum()
 
     # 计算整托数、整箱数、散件数占总件数的比例
-    h_pct_cols = pt_col[3:7]
-    for item in h_pct_cols:
-        result_pt[item + '/total_qty%'] = result_pt[item] / df['total_qty'].sum()
+    pct_col = ['pltQ', 'ctnQ', 'pieceQ', 'total_qty']
+    for item in pct_col:
+        result_pt[item + '/total_qty%'] = result_pt[item] / (result_pt['total_qty'].sum() / 2)
 
     # 计算比例
     for i in range(len(cols)):
@@ -1072,7 +1072,7 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
 
 def out_sku_qtyCtnPlt(df, index=None, sku=None):
     if index is None:
-        index = ['order_ZS_tag', 'order_PCB_tag']
+        index = ['order_ZS_tag', 'line_PCB_tag']
     if sku is None:
         sku = ['SKU_ID']
 
@@ -1091,34 +1091,34 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
         if row['pieceQ'] > 0:
             if row['ctnQ'] > 0:
                 if row['pltQ'] > 0:
-                    row['order_PCB_tag'] = 'P'
+                    row['line_PCB_tag'] = 'P'
                     new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                            'pltN', 'pltQ', 'order_PCB_tag']], ignore_index=True)
-                row['order_PCB_tag'] = 'C'
+                                                            'pltN', 'pltQ', 'line_PCB_tag']], ignore_index=True)
+                row['line_PCB_tag'] = 'C'
                 new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                        'ctnN', 'ctnQ', 'order_PCB_tag']], ignore_index=True)
+                                                        'ctnN', 'ctnQ', 'line_PCB_tag']], ignore_index=True)
             else:
                 if row['pltQ'] > 0:
-                    row['order_PCB_tag'] = 'P'
+                    row['line_PCB_tag'] = 'P'
                     new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                            'pltN', 'pltQ', 'order_PCB_tag']], ignore_index=True)
-            row['order_PCB_tag'] = 'B'
+                                                            'pltN', 'pltQ', 'line_PCB_tag']], ignore_index=True)
+            row['line_PCB_tag'] = 'B'
             new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                    'pieceQ', 'order_PCB_tag']], ignore_index=True)
+                                                    'pieceQ', 'line_PCB_tag']], ignore_index=True)
         elif row['ctnQ'] > 0:
             if row['pltQ'] > 0:
-                row['order_PCB_tag'] = 'P'
+                row['line_PCB_tag'] = 'P'
                 new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                        'pltN', 'pltQ', 'order_PCB_tag']], ignore_index=True)
-            row['order_PCB_tag'] = 'C'
+                                                        'pltN', 'pltQ', 'line_PCB_tag']], ignore_index=True)
+            row['line_PCB_tag'] = 'C'
             new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                    'ctnN', 'ctnQ', 'order_PCB_tag']],
+                                                    'ctnN', 'ctnQ', 'line_PCB_tag']],
                                                ignore_index=True)
         else:
             if row['pltQ'] > 0:
-                row['order_PCB_tag'] = 'P'
+                row['line_PCB_tag'] = 'P'
                 new_outbound = new_outbound.append(row[['orderID', 'SKU_ID', 'order_ZS_tag',
-                                                        'pltN', 'pltQ', 'order_PCB_tag']],
+                                                        'pltN', 'pltQ', 'line_PCB_tag']],
                                                    ignore_index=True)
     new_outbound.reset_index().fillna(0)
     for col in order_pt_col:
@@ -1127,31 +1127,31 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
 
     # print(new_outbound)
     # print('new_outbound rows: ', new_outbound.shape[0])
-
-    writer = pd.ExcelWriter('D:/Work/Project/09蜜思肤/Output/msf_0000_new_outbound.xlsx')
-    workbook = writer.book
-    fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light',
-                               'align': 'center',
-                               'valign': 'vcenter',
-                               'font_size': 9
-                               })
-    border_format = workbook.add_format({'border': 1})
-    percent_fmt = workbook.add_format({'num_format': '0.00%'})
-    amt_fmt = workbook.add_format({'num_format': '#,##0'})
-
-    l_end = len(new_outbound.index)
-    new_outbound.index = range(1, len(new_outbound) + 1)
-    new_outbound.index.name = '序号'
-    new_outbound.to_excel(excel_writer=writer, sheet_name='01-new_outbound')
-    worksheet1 = writer.sheets['01-new_outbound']
-    worksheet1.set_column('A:Z', 12, fmt)
-    worksheet1.conditional_format('A0:Z{}'.format(l_end), {'type': 'no_blanks', 'format': border_format})
     #
-    # for col_num, value in enumerate(new_outbound.columns.values):
-    #     worksheet1.write(1, col_num, value, fmt)
+    # writer = pd.ExcelWriter('D:/Work/Project/09蜜思肤/Output/msf_0000_new_outbound.xlsx')
+    # workbook = writer.book
+    # fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light',
+    #                            'align': 'center',
+    #                            'valign': 'vcenter',
+    #                            'font_size': 9
+    #                            })
+    # border_format = workbook.add_format({'border': 1})
+    # percent_fmt = workbook.add_format({'num_format': '0.00%'})
+    # amt_fmt = workbook.add_format({'num_format': '#,##0'})
+    #
+    # l_end = len(new_outbound.index)
+    # new_outbound.index = range(1, len(new_outbound) + 1)
+    # new_outbound.index.name = '序号'
     # new_outbound.to_excel(excel_writer=writer, sheet_name='01-new_outbound')
-    writer.save()
-    writer.close()
+    # worksheet1 = writer.sheets['01-new_outbound']
+    # worksheet1.set_column('A:Z', 12, fmt)
+    # worksheet1.conditional_format('A0:Z{}'.format(l_end), {'type': 'no_blanks', 'format': border_format})
+    # #
+    # # for col_num, value in enumerate(new_outbound.columns.values):
+    # #     worksheet1.write(1, col_num, value, fmt)
+    # # new_outbound.to_excel(excel_writer=writer, sheet_name='01-new_outbound')
+    # writer.save()
+    # writer.close()
 
     lineCount = pd.pivot_table(new_outbound, index=index,
                                values=sku, aggfunc='count',
@@ -1169,25 +1169,25 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
     order_dim_pt = pd.merge(lineCount, order_dim_pt, on=index, how='outer', sort=False)
 
     ### 提取整箱订购行，按SKU维度聚合，计算整箱折合整托数
-    outbound_C = new_outbound[new_outbound['order_PCB_tag'] == 'C'].reset_index()
+    outbound_C = new_outbound[new_outbound['line_PCB_tag'] == 'C'].reset_index()
     sku_dim_C = outbound_C.groupby(['order_ZS_tag', 'SKU_ID']).agg(ctnN=pd.NamedAgg(column='ctnN',
                                                                                     aggfunc='sum')).reset_index()
     sku_dim_C = pd.merge(sku_dim_C, df[['SKU_ID', 'pltQty', 'fullCaseUnit']], on='SKU_ID', how='left', sort=False)
     sku_dim_C = sku_dim_C.drop_duplicates().reset_index().fillna(0)
-    sku_dim_C['order_PCB_tag'] = 'C'
+    sku_dim_C['line_PCB_tag'] = 'C'
     sku_dim_C['ctn2pltN'] = 0
     sku_dim_C.loc[(sku_dim_C['pltQty'] > 0), ['ctn2pltN']] = round(sku_dim_C['ctnN'] *
                                                                    sku_dim_C['fullCaseUnit'] / sku_dim_C['pltQty'], 2)
-    sku_dim_C.to_excel(excel_writer=writer, sheet_name='02-sku_dim_C')
+    # sku_dim_C.to_excel(excel_writer=writer, sheet_name='02-sku_dim_C')
 
     ### 提取散件订购行，按SKU维度聚合，计算散件折合整箱数
-    outbound_B = new_outbound[new_outbound['order_PCB_tag'] == 'B'].reset_index()
+    outbound_B = new_outbound[new_outbound['line_PCB_tag'] == 'B'].reset_index()
     sku_dim_B = outbound_B.groupby(['order_ZS_tag', 'SKU_ID']).agg(pieceQ=pd.NamedAgg(column='pieceQ',
                                                                                       aggfunc='sum')).reset_index()
     sku_dim_B = pd.merge(sku_dim_B, df[['SKU_ID', 'pltQty', 'fullCaseUnit']], on='SKU_ID', how='left', sort=False)
     sku_dim_B = sku_dim_B.drop_duplicates().reset_index().fillna(0)
     # print('sku_dim_C rows: ', sku_dim_B.shape[0])
-    sku_dim_B['order_PCB_tag'] = 'B'
+    sku_dim_B['line_PCB_tag'] = 'B'
     sku_dim_B['piece2ctnN'] = 0
     sku_dim_B.loc[(sku_dim_B['fullCaseUnit'] > 0),
                   ['piece2ctnN']] = np.floor(sku_dim_B['pieceQ'] / sku_dim_B['fullCaseUnit'])
@@ -1195,7 +1195,7 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
     sku_dim_B.loc[(sku_dim_B['piece2ctnN'] > 0),
                   ['piece2ctn_qty']] = sku_dim_B['piece2ctnN'] * sku_dim_B['fullCaseUnit']
     sku_dim_B['piece2ctn_remainder'] = sku_dim_B['pieceQ'] - sku_dim_B['piece2ctn_qty']
-    sku_dim_B.to_excel(excel_writer=writer, sheet_name='03-sku_dim_B')
+    # sku_dim_B.to_excel(excel_writer=writer, sheet_name='03-sku_dim_B')
 
     ### 汇总SKU维度数据
     sku_dim_C_pt = pd.pivot_table(sku_dim_C, index=index,
@@ -1224,14 +1224,99 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
     result_pt = result_pt[index + ['line_count'] + pt_col]
     # print(result_pt)
 
+    ### 计算各分项件数占总件数的比
+    pct_col = ['pltQ', 'ctnQ', 'piece2ctn_qty', 'piece2ctn_remainder']
+    for col in pct_col:
+        result_pt[col + '/总件数%'] = result_pt[col] / (result_pt['total_qty'].sum() / 2)
+
     # 计算件数, 折合箱数/托数比例
-    result_pt['件数%'] = result_pt['total_qty'] / (result_pt['total_qty'].sum() / 2)
-    result_pt['箱数%'] = (result_pt['ctnN'] + result_pt['piece2ctnN']) / \
-                       ((result_pt['ctnN'].sum() + result_pt['piece2ctnN'].sum()) / 2)
-    result_pt['托数%'] = (result_pt['pltN'] + result_pt['ctn2pltN']) / \
-                       ((result_pt['pltN'].sum() + result_pt['ctn2pltN'].sum()) / 2)
+    result_pt['总件数%'] = result_pt['total_qty'] / (result_pt['total_qty'].sum() / 2)
+    result_pt['箱数%(原箱+散件折算成箱)'] = (result_pt['ctnN'] + result_pt['piece2ctnN']) / \
+                                  ((result_pt['ctnN'].sum() + result_pt['piece2ctnN'].sum()) / 2)
+    result_pt['托数%(整托+原箱折算成托)'] = (result_pt['pltN'] + result_pt['ctn2pltN']) / \
+                                  ((result_pt['pltN'].sum() + result_pt['ctn2pltN'].sum()) / 2)
     # writer.save()
     # writer.close()
+
+    index_num = len(index)
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
+    result_pt.columns = trans(result_pt.columns)
+    result_pt.index = range(1, len(result_pt) + 1)
+    result_pt.index.name = '序号'
+    return result_pt
+
+
+def out_zs_qty(df_zs, index=None, sku=None):
+    if sku is None:
+        sku = ['SKU_ID']
+
+    pt_col = ['pltN', 'pltQ', 'ctnN', 'ctnQ', 'pieceQ',
+              'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN',
+              'total_qty']
+    order_pt_col = ['pltN', 'pltQ', 'ctnN', 'ctnQ']
+    sku_pt_col = ['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
+
+    lineCount = pd.pivot_table(df_zs, index=index,
+                               values=sku, aggfunc='count',
+                               fill_value=0,
+                               margins=True).reset_index()
+    print(lineCount.columns)
+    lineCount.columns = index + ['line_count']
+
+    order_dim_pt = pd.pivot_table(df_zs, index=index,
+                                  values=order_pt_col,
+                                  aggfunc='sum', fill_value=0,
+                                  margins=True).reset_index()
+    order_dim_pt = pd.merge(lineCount, order_dim_pt, on=index, how='outer', sort=False)
+
+    sku_dim = df_zs.groupby(['order_ZS_tag', 'SKU_ID']).agg(ctnN=pd.NamedAgg(column='ctnN', aggfunc='sum'),
+                                                            pieceQ=pd.NamedAgg(column='pieceQ', aggfunc='sum')
+                                                            ).reset_index()
+    # print('*' * 20)
+    # print(sku_dim)
+
+    sku_dim = pd.merge(sku_dim, df_zs[['SKU_ID', 'pltQty', 'fullCaseUnit'] + index],
+                       on=['SKU_ID', 'order_ZS_tag'], how='left')
+    sku_dim = sku_dim.drop_duplicates().reset_index().fillna(0)
+    sku_dim['ctn2pltN'] = 0
+    sku_dim.loc[(sku_dim['pltQty'] > 0), ['ctn2pltN']] = round(sku_dim['ctnN'] *
+                                                               sku_dim['fullCaseUnit'] / sku_dim['pltQty'], 2)
+    sku_dim['piece2ctnN'] = 0
+    sku_dim.loc[(sku_dim['fullCaseUnit'] > 0),
+                ['piece2ctnN']] = np.floor(sku_dim['pieceQ'] / sku_dim['fullCaseUnit'])
+    sku_dim['piece2ctn_qty'] = 0
+    sku_dim.loc[(sku_dim['piece2ctnN'] > 0),
+                ['piece2ctn_qty']] = sku_dim['piece2ctnN'] * sku_dim['fullCaseUnit']
+    sku_dim['piece2ctn_remainder'] = sku_dim['pieceQ'] - sku_dim['piece2ctn_qty']
+
+    sku_dim_pt = pd.pivot_table(sku_dim, index=index,
+                                values=sku_pt_col,
+                                aggfunc='sum', fill_value=0,
+                                margins=True).reset_index()
+
+    # print('-'*20)
+    # print(sku_dim)
+
+    result_pt = pd.merge(order_dim_pt, sku_dim_pt, on=index, how='left')
+    result_pt['total_qty'] = result_pt['pltQ'] + result_pt['ctnQ'] + result_pt['pieceQ']
+    # 重排列
+    result_pt = result_pt[index + ['line_count'] + pt_col]
+
+    # pt_col = ['pltN', 'pltQ', 'ctnN', 'ctnQ', 'pieceQ',
+    #           'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN',
+    #           'total_qty']
+    ### 计算各分项件数占总件数的比
+    pct_col = ['pltQ', 'ctnQ', 'piece2ctn_qty', 'piece2ctn_remainder']
+    for col in pct_col:
+        result_pt[col + '/总件数%'] = result_pt[col] / (result_pt['total_qty'].sum() / 2)
+
+    # 计算件数, 折合箱数/托数比例
+    result_pt['总件数%'] = result_pt['total_qty'] / (result_pt['total_qty'].sum() / 2)
+    result_pt['箱数%(原箱+散件折算成箱)'] = (result_pt['ctnN'] + result_pt['piece2ctnN']) / \
+                                  ((result_pt['ctnN'].sum() + result_pt['piece2ctnN'].sum()) / 2)
+    result_pt['托数%(整托+原箱折算成托)'] = (result_pt['pltN'] + result_pt['ctn2pltN']) / \
+                                  ((result_pt['pltN'].sum() + result_pt['ctn2pltN'].sum()) / 2)
 
     index_num = len(index)
     cols = list(result_pt.columns[index_num:])
@@ -1341,9 +1426,9 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
         result_pt.loc[result_pt[index[0]] == 'All', [pt_col[i]]] = df[pt_col[i]].sum()
 
     # 计算整托数、整箱数、散件数占总件数的比例
-    h_pct_cols = pt_col[3:7]
-    for item in h_pct_cols:
-        result_pt[item + '/total_qty%'] = result_pt[item] / df['total_qty'].sum()
+    pct_col = ['pltQ', 'ctnQ', 'pieceQ', 'total_qty']
+    for item in pct_col:
+        result_pt[item + '/total_qty%'] = result_pt[item] / (result_pt['total_qty'].sum() / 2)
 
     # 计算比例
     for i in range(len(cols)):
@@ -1384,7 +1469,7 @@ def trans(columns):
             col = col.replace('fullCaseUnit', '原箱装箱数(件)')
 
             col = col.replace('order_ZS_tag', '订单整箱/散件订购标识')
-            col = col.replace('order_PCB_tag', '订单行订购单元标识')
+            col = col.replace('line_PCB_tag', '订单行订购单元标识')
             col = col.replace('EQ', '订单件数')
             col = col.replace('EN', '订单行数')
             col = col.replace('EV', '订单体积')
@@ -1458,14 +1543,14 @@ def data_format(df, columns):
         if '%' in col:
             # print('%%%', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
-        elif 'avg_vol' in col or 'avg_weight' in col:
+        elif 'vol' in col or 'avg_weight' in col:
             # print('4位小数,千分位', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 4)).apply(
                 lambda x: '{:,}'.format(x))
         elif 'piece2ctn_remainder' in col or 'kg/m3' in col or 'avg_pltQty' in col:
             # print('整数,千分位', col)
             df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
-        elif 'per' in col or 'days' in col or 'avg' in col or 'vol' in col:
+        elif 'per' in col or 'days' in col or 'avg' in col:
             # print('2位小数,千分位', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
                 lambda x: '{:,}'.format(x))
@@ -1502,7 +1587,7 @@ def layout_format(writer):
         # rows = sheet.get_row()
         # cols = sheet.get_col()
         # cols_name = cap_list[cols]
-        sheet.set_column('A0:Z100', 12, fmt)
+        sheet.set_column('A:Z', 12, fmt)
         sheet.conditional_format('A0:Z20', {'type': 'no_blanks', 'format': border_format})
         # sheet.conditional_format('A0:{}{}'.format('M', 10), {'format': border_format})
 

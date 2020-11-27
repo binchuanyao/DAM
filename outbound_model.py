@@ -39,6 +39,12 @@ def outbound(sku_ref, outbound_org, result_path):
 
     # pprint.pprint(df[['SKU_ID','plt_Qty' , 'size']])
 
+    ###  计算出库数据的总天数
+    if len(df['order_date'].unique()) == 1:
+        mdays = 1
+    else:
+        mdays = len(df['order_date'].unique())
+
     # 12 M 购买数量折合托盘数
     df['pltN'] = 0
     df.loc[(df['pltQty'] > 0), ['pltN']] = np.floor(df['total_qty'] / df['pltQty'])
@@ -174,7 +180,7 @@ def outbound(sku_ref, outbound_org, result_path):
                         break
 
     # 订单行内PC分级标签
-    df['inLine_PC_tag'] = df['EIV_class'].apply(lambda x: x[:1]).tolist()
+    df['order_inline_PC_tag'] = df['EIV_class'].apply(lambda x: x[:1]).tolist()
     # df.loc[type(df['EIV_class']) == np.string ] = df['EIV_class'].apply(lambda x: x[:1]).tolist()
 
     ### ---------------------------------------------------------------------------------------------------------------
@@ -231,12 +237,16 @@ def outbound(sku_ref, outbound_org, result_path):
                                  'EQ_class', 'EN_class', 'EV_class']]
 
     ### ---------------------------------------------------------------------------------------------------------------
-    ### 整箱订购order维度基础信息
+    ### 整箱订购order维度基础信息 order_ZS_tag(整箱/散件标签) line_PCB_tag(行PCB标签）
     ### 新建df_z,选取整箱订购行，添加 order_sku_tag 标签
     # z_cols = ['orderID', 'SKU_ID','pltN', 'pltQ', 'ctnN', 'ctnQ', 'VOL']
     df_z = df[(df['pltQ'] > 0) | (df['ctnQ'] > 0)].copy().reset_index()
     df_z['total_qty'] = df_z['pltQ'] + df_z['ctnQ']
-    df_z['inline_tag'] = 'Z'
+    df_z[['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder']] = 0
+    df_z['order_ZS_tag'] = 'Z'
+    df_z['line_PCB_tag'] = ''
+    df_z.loc[(df_z['pltQ'] > 0), ['line_PCB_tag']] = 'P'
+    df_z.loc[(df_z['ctnQ'] > 0), ['line_PCB_tag']] = 'C'
 
     order_temp1 = df_z.groupby('orderID').agg(EN_countSKU_Z=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
     order_temp2 = df_z.groupby('orderID').agg(EQ_sumQty_Z=pd.NamedAgg(column='total_qty', aggfunc='sum'),
@@ -285,7 +295,9 @@ def outbound(sku_ref, outbound_org, result_path):
     #           'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
     df_s = df[(df['pieceQ'] > 0)].copy().reset_index()
     df_s['total_qty'] = df_s['pieceQ']
-    df_s['inline_tag'] = 'S'
+    df_s[['pltN', 'pltQ', 'ctnN', 'ctnQ']] = 0
+    df_s['order_ZS_tag'] = 'S'
+    df_s['line_PCB_tag'] = 'B'
 
     order_temp1 = df_s.groupby('orderID').agg(EN_countSKU_S=pd.NamedAgg(column='SKU_ID', aggfunc='count')).reset_index()
     order_temp2 = df_s.groupby('orderID').agg(EQ_sumQty_S=pd.NamedAgg(column='total_qty', aggfunc='sum'),
@@ -335,6 +347,9 @@ def outbound(sku_ref, outbound_org, result_path):
                                            EV_sumVol=pd.NamedAgg(column='VOL', aggfunc='sum')).reset_index()
 
     sku_detail = pd.merge(sku_temp1, sku_temp2, how='left', on='SKU_ID', sort=False)
+    sku_detail['EQ_sumQty'] = sku_detail['EQ_sumQty'] / mdays
+    sku_detail['EV_sumVol'] = sku_detail['EV_sumVol'] / mdays
+    sku_detail['EN_count'] = sku_detail['EN_count'] / mdays
 
     # SKU维度的日出库行数分级
     sku_detail['DIK_class'] = 0
@@ -373,38 +388,54 @@ def outbound(sku_ref, outbound_org, result_path):
     # 计算日出库ABC件数分级
     # 添加辅助列 出库件数占比，出库体积占比
     sku_detail['qty_rate'] = sku_detail['EQ_sumQty'] / sku_detail['EQ_sumQty'].sum()
+    sku_detail['vol_rate'] = sku_detail['EV_sumVol'] / sku_detail['EV_sumVol'].sum()
     sku_detail['count_rate'] = sku_detail['EN_count'] / sku_detail['EN_count'].sum()
 
     sku_detail['qty_rank'] = sku_detail['qty_rate'].rank(ascending=False, method='first')
+    sku_detail['vol_rank'] = sku_detail['vol_rate'].rank(ascending=False, method='first')
     sku_detail['count_rank'] = sku_detail['count_rate'].rank(ascending=False, method='first')
 
-    sku_detail['DQ_ABC'] = 'ZZ' + '_' + config.ABC_CLASS[4]
+    sku_detail['ABC_MPDQ'] = 'ZZ' + '_' + config.ABC_CLASS[4]
     for index, row in sku_detail.iterrows():
         cumu_rate = sku_detail[(sku_detail['qty_rank'] <= row['qty_rank'])]['qty_rate'].sum()
         if row['qty_rank'] == 1:
-            sku_detail.loc[index, ['DQ_ABC']] = 'DQ' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDQ']] = 'MPDQ' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[0]:
-            sku_detail.loc[index, ['DQ_ABC']] = 'DQ' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDQ']] = 'MPDQ' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[1]:
-            sku_detail.loc[index, ['DQ_ABC']] = 'DQ' + '_' + config.ABC_CLASS[1]
+            sku_detail.loc[index, ['ABC_MPDQ']] = 'MPDQ' + '_' + config.ABC_CLASS[1]
         elif cumu_rate <= config.ABC_INTERVAL[2]:
-            sku_detail.loc[index, ['DQ_ABC']] = 'DQ' + '_' + config.ABC_CLASS[2]
+            sku_detail.loc[index, ['ABC_MPDQ']] = 'MPDQ' + '_' + config.ABC_CLASS[2]
         else:
-            sku_detail.loc[index, ['DQ_ABC']] = 'DQ' + '_' + config.ABC_CLASS[3]
+            sku_detail.loc[index, ['ABC_MPDQ']] = 'MPDQ' + '_' + config.ABC_CLASS[3]
 
-    sku_detail['DK_ABC'] = 'ZZ' + '_' + config.ABC_CLASS[4]
+    sku_detail['ABC_MPDV'] = 'ZZ' + '_' + config.ABC_CLASS[4]
+    for index, row in sku_detail.iterrows():
+        cumu_rate = sku_detail[(sku_detail['vol_rank'] <= row['vol_rank'])]['vol_rate'].sum()
+        if row['vol_rank'] == 1:
+            sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[0]
+        elif cumu_rate <= config.ABC_INTERVAL[0]:
+            sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[0]
+        elif cumu_rate <= config.ABC_INTERVAL[1]:
+            sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[1]
+        elif cumu_rate <= config.ABC_INTERVAL[2]:
+            sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[2]
+        else:
+            sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[3]
+
+    sku_detail['ABC_MPDN'] = 'ZZ' + '_' + config.ABC_CLASS[4]
     for index, row in sku_detail.iterrows():
         cumu_rate = sku_detail[(sku_detail['count_rank'] <= row['count_rank'])]['count_rate'].sum()
         if row['count_rank'] == 1:
-            sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[0]:
-            sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[1]:
-            sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[1]
+            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[1]
         elif cumu_rate <= config.ABC_INTERVAL[2]:
-            sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[2]
+            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[2]
         else:
-            sku_detail.loc[index, ['DK_ABC']] = 'DK' + '_' + config.ABC_CLASS[3]
+            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[3]
 
     # --------------------------------------------------------------------------------------------
     # 根据 orderID 匹配订单详细信息到原始数据   订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
@@ -419,10 +450,10 @@ def outbound(sku_ref, outbound_org, result_path):
     df_s = pd.merge(df_s, order_detail_s, how='left', on='orderID', sort=False)
 
     # 根据 SKU_ID 匹配SKU详细信息   DIQ_class/DIK_class/DIV_class
-    df = pd.merge(df, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class', 'DQ_ABC', 'DK_ABC']],
+    df = pd.merge(df, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']],
                   how='left', on='SKU_ID', sort=False)
 
-    rele_df_source = df[['orderID', 'size', 'inLine_PC_tag', 'DQ_ABC', 'DK_ABC']]
+    rele_df_source = df[['orderID', 'size', 'order_inline_PC_tag', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']]
 
     order_group = rele_df_source.groupby('orderID')
     order_relevance = {}
@@ -434,26 +465,32 @@ def outbound(sku_ref, outbound_org, result_path):
         t_size.sort()
         t_size = '-'.join(t_size)
 
-        t_PC = list(filter(None, list(set(v['inLine_PC_tag']))))
+        t_PC = list(filter(None, list(set(v['order_inline_PC_tag']))))
         # t_PC = list(filter(None, t_PC))
         t_PC.sort()
         t_PC = '-'.join(t_PC)
 
-        t_DQ_ABC = list(filter(None, list(set(v['DQ_ABC']))))
+        t_DQ_ABC = list(filter(None, list(set(v['ABC_MPDQ']))))
         t_DQ_ABC.sort()
         t_DQ_ABC = '-'.join(t_DQ_ABC)
 
-        t_DK_ABC = list(filter(None, list(set(v['DK_ABC']))))
+        t_DV_ABC = list(filter(None, list(set(v['ABC_MPDV']))))
+        t_DV_ABC.sort()
+        t_DV_ABC = '-'.join(t_DV_ABC)
+
+        t_DK_ABC = list(filter(None, list(set(v['ABC_MPDN']))))
         t_DK_ABC.sort()
         t_DK_ABC = '-'.join(t_DK_ABC)
 
         order_relevance[k].append(t_size)
         order_relevance[k].append(t_PC)
         order_relevance[k].append(t_DQ_ABC)
+        order_relevance[k].append(t_DV_ABC)
         order_relevance[k].append(t_DK_ABC)
 
     order_relevance = pd.DataFrame.from_dict(order_relevance, orient='index',
-                                             columns=['size_rele', 'PC_rele', 'DQ_ABC_rele', 'DK_ABC_rele'])
+                                             columns=['size_rele', 'PC_rele', 'DQ_ABC_rele', 'DV_ABC_rele',
+                                                      'DK_ABC_rele'])
     order_relevance = order_relevance.reset_index().rename(columns={'index': 'orderID'})
 
     df = pd.merge(df, order_relevance, how='left', on='orderID', sort=False)
@@ -498,18 +535,21 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ## 添加 order维度的 EV_class
     df_zs = pd.merge(df_zs, order_detail[['orderID', 'EV_class']], on='orderID', how='left', sort=False)
+    df_zs = pd.merge(df_zs, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class',
+                                        'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']],
+                     how='left', on='SKU_ID', sort=False)
 
     df_zs['EQ_class_all'] = ''
-    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EQ_class_all']] = df_zs['EQ_class_Z']
-    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EQ_class_all']] = df_zs['EQ_class_S']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'Z'), ['EQ_class_all']] = df_zs['EQ_class_Z']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'S'), ['EQ_class_all']] = df_zs['EQ_class_S']
 
     df_zs['EN_class_all'] = ''
-    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EN_class_all']] = df_zs['EN_class_Z']
-    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EN_class_all']] = df_zs['EN_class_S']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'Z'), ['EN_class_all']] = df_zs['EN_class_Z']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'S'), ['EN_class_all']] = df_zs['EN_class_S']
 
     df_zs['EV_class_all'] = ''
-    df_zs.loc[(df_zs['inline_tag'] == 'Z'), ['EV_class_all']] = df_zs['EV_class_Z']
-    df_zs.loc[(df_zs['inline_tag'] == 'S'), ['EV_class_all']] = df_zs['EV_class_S']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'Z'), ['EV_class_all']] = df_zs['EV_class_Z']
+    df_zs.loc[(df_zs['order_ZS_tag'] == 'S'), ['EV_class_all']] = df_zs['EV_class_S']
 
     ### 拆分整箱/散件后的 EIV分级
     df_zs['line_vol'] = df_zs['total_qty'] * df_zs['corrVol']
@@ -534,13 +574,14 @@ def outbound(sku_ref, outbound_org, result_path):
                         break
 
 
+
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
     df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
-
+    df_zs.to_excel(excel_writer=writer, sheet_name='00-outBound_zs', inf_rep='')
     order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
 
     ## 计算SKU维度信息
@@ -556,10 +597,18 @@ def outbound(sku_ref, outbound_org, result_path):
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}outBound2_{}.xlsx'.format(result_path, str_time))
 
-    ## 0. order and sku维度整托件数，整箱数，散件数折算
+    ## 00. order and sku维度整托件数，整箱数，散件数折算
 
     res = out_sku_qtyCtnPlt(df)
     res.to_excel(excel_writer=writer, sheet_name='00-order_sku_qtyClass', inf_rep='')
+
+    idx00 = ['order_ZS_tag', 'line_PCB_tag']
+    res = out_zs_qty(df_zs, index=idx00)
+    res.to_excel(excel_writer=writer, sheet_name='00-ZS_PCB', inf_rep='')
+
+    idx001 = ['ABC_MPDV', 'order_ZS_tag']
+    res = out_zs_qty(df_zs, index=idx001)
+    res.to_excel(excel_writer=writer, sheet_name='00-ABC_MPDV(zs)', inf_rep='')
 
     ## 1. sku维度透视表
     idx11 = ['size']
@@ -593,6 +642,10 @@ def outbound(sku_ref, outbound_org, result_path):
     pt = out_sku_qty_pivot(df, index=idx16)
     pt.to_excel(excel_writer=writer, sheet_name='16-sku_EIV_class', inf_rep='')
 
+    idx17 = ['ABC_MPDV', 'order_ZS_tag']
+    res = out_sku_qty_pivot(df_zs, index=idx17)
+    res.to_excel(excel_writer=writer, sheet_name='17-ABC_MPDV(zs)', inf_rep='')
+
     """
     ## 2. 订单维度透视表
     """
@@ -615,7 +668,7 @@ def outbound(sku_ref, outbound_org, result_path):
     ## 3. ABC透视表
     """
     # DQ-ABC&rele 透视
-    idx31 = ['DQ_ABC']
+    idx31 = ['ABC_MPDQ']
     order_type = out_order_pivot(df, index=idx31)
     order_type.to_excel(excel_writer=writer, sheet_name='31-DQ_ABC', inf_rep='')
 
@@ -624,12 +677,12 @@ def outbound(sku_ref, outbound_org, result_path):
     order_type.to_excel(excel_writer=writer, sheet_name='32-DQ_ABC_rele', inf_rep='')
 
     # # DQ-ABC&rele 透视
-    # idx33 = ['DQ_ABC', 'DQ-ABC_rele']
+    # idx33 = ['ABC_MPDQ', 'DQ-ABC_rele']
     # order_type = out_order_pivot(df, index=idx33)
     # order_type.to_excel(excel_writer=writer, sheet_name='32-DQ_ABC&rele', inf_rep='')
 
     # DK-ABC 透视
-    idx34 = ['DK_ABC']
+    idx34 = ['ABC_MPDN']
     order_releSize = out_order_pivot(df, index=idx34)
     order_releSize.to_excel(excel_writer=writer, sheet_name='33-DK_ABC', inf_rep='')
 
@@ -638,7 +691,7 @@ def outbound(sku_ref, outbound_org, result_path):
     order_type.to_excel(excel_writer=writer, sheet_name='34-DK_ABC_rele', inf_rep='')
 
     # # DK-ABC&rele 透视
-    # idx36 = ['DK_ABC', 'DK-ABC_rele']
+    # idx36 = ['ABC_MPDN', 'DK-ABC_rele']
     # order_releSize = out_order_pivot(df, index=idx36)
     # order_releSize.to_excel(excel_writer=writer, sheet_name='34-DK_ABC&rele', inf_rep='')
 
@@ -711,11 +764,11 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ## 增加 order维度，订单行整箱/散件拆分的 EQ, EN分级
 
-    idx44 = ['EV_class', 'inline_tag', 'EQ_class_all', 'EN_class_all']
+    idx44 = ['EV_class', 'order_ZS_tag', 'EQ_class_all', 'EN_class_all']
     res = out_order_pivot(df_zs, index=idx44)
     res.to_excel(excel_writer=writer, sheet_name='44-EV_EQ_EN', inf_rep='')
 
-    idx45 = ['EV_class', 'inline_tag', 'EIV_class_zs']
+    idx45 = ['EV_class', 'order_ZS_tag', 'EIV_class_zs']
     res = out_order_pivot(df_zs, index=idx45)
     res.to_excel(excel_writer=writer, sheet_name='45-EV_EIV(zs)', inf_rep='')
 
@@ -755,6 +808,8 @@ def outbound(sku_ref, outbound_org, result_path):
     idx57 = ['EQ_class', 'DIV_class']
     order_releSize = out_order_pivot(df, index=idx57)
     order_releSize.to_excel(excel_writer=writer, sheet_name='57-EQ&DIV', inf_rep='')
+
+    layout_format(writer)
 
     writer.save()
     writer.close()
