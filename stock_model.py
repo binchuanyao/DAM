@@ -178,11 +178,11 @@ def calu_stock_data(original, config=None):
             df.loc[index, ['daily_order_times']] = round(row['monthly_deli_cumu_times'] / mdays, 2)
 
     # 93. CP 月度日均出库体积(mm3)_现状
-    df['daily_deli_vol_mm'] = round(df['daily_deli_qty'] * df['vol'], 2)
+    df['daily_deli_vol_mm'] = df['daily_deli_qty'] * df['vol']
     # 94. CQ 月度日均出库体积(m3)_现状
-    df['daily_deli_vol_m'] = round(df['daily_deli_qty'] * df['vol'] / pow(10, 9), 2)
+    df['daily_deli_vol_m'] = df['daily_deli_qty'] * df['vol'] / pow(10, 9)
     # 月度日均出库重量(kg)_现状
-    df['daily_deli_weight'] = round(df['daily_deli_qty'] * df['weight'], 2)  # weight or weight_corr
+    df['daily_deli_weight'] = df['daily_deli_qty'] * df['weight']  # weight or weight_corr
 
     '''
     月度日均 入库参数
@@ -1818,7 +1818,7 @@ def calu_stock_data(original, config=None):
     df['design_daily_stock_sku'] = df['daily_stock_sku'] * config.DESIGN_COEFFICIENT['sku_num_coe']
 
     # 157 FB 月度日均出库数量(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
-    df['design_daily_deli_qty'] = round(df['daily_deli_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe'], 2)
+    df['design_daily_deli_qty'] = df['daily_deli_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe']
 
     # 158 FC 月度日均出库体积(m3)(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
     df['design_daily_deli_vol_m'] = df['daily_deli_vol_m'] * config.DESIGN_COEFFICIENT['total_qty_coe']

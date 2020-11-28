@@ -448,7 +448,7 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
 
     # 计算比例
     for i in range(len(cols)):
-        result_pt[cols[i] + '%'] = round(result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2), 4)
+        result_pt[cols[i] + '%'] = result_pt[cols[i]] / (result_pt[cols[i]].sum() / 2)
 
     # 判断是否计算累计比例，若计算，一般为件数及体积的累计比例
     if isCumu:
@@ -466,7 +466,7 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
 
     # 计算体积周转天数
     if 'daily_deli_vol_m' in result_pt.columns:
-        result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m'], 4)
+        result_pt['vol_turnover_days'] = result_pt['daily_stock_vol_m'] / result_pt['daily_deli_vol_m']
 
     if isAvg:
         # 计算字段
@@ -671,23 +671,20 @@ def equ_class(df, class_index1, class_index2):
          'current_shuttle_num', 'current_pltPickN', 'current_pltStockN']]
 
     # 计算比例
-    result_pt['SKU_ID%'] = round(
-        result_pt['SKU_ID'] / (result_pt['SKU_ID'].sum() / 2), 2)
-    result_pt['daily_stock_sku%'] = round(
-        result_pt['daily_stock_sku'] / (result_pt['daily_stock_sku'].sum() / 2), 2)
-    result_pt['current_shelfD300_num%'] = round(
-        result_pt['current_shelfD300_num'] / (result_pt['current_shelfD300_num'].sum() / 2), 2)
-    result_pt['current_shelfD500_num%'] = round(
-        result_pt['current_shelfD500_num'] / (result_pt['current_shelfD500_num'].sum() / 2),
-        6)
-    result_pt['current_shelfD600_num%'] = round(
-        result_pt['current_shelfD600_num'] / (result_pt['current_shelfD600_num'].sum() / 2), 2)
-    result_pt['current_shuttle_num%'] = round(
-        result_pt['current_shuttle_num'] / (result_pt['current_shuttle_num'].sum() / 2), 2)
-    result_pt['current_pltPickN%'] = round(
-        result_pt['current_pltPickN'] / (result_pt['current_pltPickN'].sum() / 2), 2)
-    result_pt['current_pltStockN%'] = round(
-        result_pt['current_pltStockN'] / (result_pt['current_pltStockN'].sum() / 2), 2)
+    result_pt['SKU_ID%'] = result_pt['SKU_ID'] / (result_pt['SKU_ID'].sum() / 2)
+    result_pt['daily_stock_sku%'] = result_pt['daily_stock_sku'] / (
+            result_pt['daily_stock_sku'].sum() / 2)
+    result_pt['current_shelfD300_num%'] = result_pt['current_shelfD300_num'] / (
+            result_pt['current_shelfD300_num'].sum() / 2)
+    result_pt['current_shelfD500_num%'] = result_pt['current_shelfD500_num'] / (
+            result_pt['current_shelfD500_num'].sum() / 2)
+    result_pt['current_shelfD600_num%'] = result_pt['current_shelfD600_num'] / (
+            result_pt['current_shelfD600_num'].sum() / 2)
+    result_pt['current_shuttle_num%'] = result_pt['current_shuttle_num'] / (
+            result_pt['current_shuttle_num'].sum() / 2)
+    result_pt['current_pltPickN%'] = result_pt['current_pltPickN'] / \
+                                     (result_pt['current_pltPickN'].sum() / 2)
+    result_pt['current_pltStockN%'] = result_pt['current_pltStockN'] /(result_pt['current_pltStockN'].sum() / 2)
 
 
 def current_equ_class(df, index, sku=None, pt_col=None, isCumu=False):
@@ -916,9 +913,11 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
             # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 4)
-    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 4)
-    result_pt['vol_per_order'] = round(result_pt['VOL'] / result_pt['order_dist_count'], 4)
+    result_pt['qty_per_order'] = result_pt['total_qty'] / result_pt['order_dist_count']
+    result_pt['ctn_per_order'] = result_pt['total_qty2ctnN'] / result_pt['order_dist_count']
+    result_pt['line_per_order'] = result_pt['line_count'] / result_pt['order_dist_count']
+    result_pt['qty_per_line'] = result_pt['total_qty'] / result_pt['line_count']
+    result_pt['vol_per_order'] = result_pt['VOL'] / result_pt['order_dist_count']
 
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
@@ -991,8 +990,9 @@ def out_order_sku_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Tru
 
     result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 2)
     result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 2)
+    result_pt['qty_per_line'] = result_pt['total_qty'] / result_pt['line_count']
     if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_dist_count'], 2)
+        result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
@@ -1440,10 +1440,10 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
             result_pt[cols[i] + '%_cumu'] = result_pt[cols[i] + '%'].cumsum()
             # result_pt.loc[(result_pt[index[0]] == 'All'), [cols[i] + '%_cumu']] = ''
 
-    result_pt['qty_per_order'] = round(result_pt['total_qty'] / result_pt['order_dist_count'], 2)
-    result_pt['line_per_order'] = round(result_pt['line_count'] / result_pt['order_dist_count'], 2)
+    result_pt['qty_per_order'] = result_pt['total_qty'] / result_pt['order_dist_count']
+    result_pt['line_per_order'] = result_pt['line_count'] / result_pt['order_dist_count']
     if 'VOL' in result_pt.columns:
-        result_pt['daily_deli_vol_perSKU'] = round(result_pt['VOL'] / result_pt['sku_dist_count'], 2)
+        result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
     cols = list(result_pt.columns[index_num:])
     result_pt = data_format(result_pt, cols)
@@ -1543,7 +1543,7 @@ def data_format(df, columns):
         if '%' in col:
             # print('%%%', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: '%.2f%%' % (x * 100))
-        elif 'vol' in col or 'avg_weight' in col:
+        elif 'vol' in col or 'Vol' in col or 'VOL' in col or 'avg_weight' in col:
             # print('4位小数,千分位', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 4)).apply(
                 lambda x: '{:,}'.format(x))
@@ -1554,7 +1554,7 @@ def data_format(df, columns):
             # print('2位小数,千分位', col)
             df.loc[(df[col] > 0), col] = df.loc[(df[col] > 0), col].apply(lambda x: round(x, 2)).apply(
                 lambda x: '{:,}'.format(x))
-        elif ('N' in col or 'Q' in col) and ('2' not in col):
+        elif ('N' in col or 'Q' in col) and ('2' not in col) and ('daily' not in col):
             # print('整数,千分位', col)
             df[col] = pd.to_numeric(df[col]).round(0).astype(int).apply(lambda x: '{:,}'.format(x))
         elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):

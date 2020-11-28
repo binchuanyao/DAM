@@ -809,6 +809,11 @@ def outbound(sku_ref, outbound_org, result_path):
     order_releSize = out_order_pivot(df, index=idx57)
     order_releSize.to_excel(excel_writer=writer, sheet_name='57-EQ&DIV', inf_rep='')
 
+    # order-structure & EN 透视
+    idx58 = ['EIV_class']
+    res = out_order_pivot(df, index=idx58)
+    res.to_excel(excel_writer=writer, sheet_name='58-EIV', inf_rep='')
+
     layout_format(writer)
 
     writer.save()
