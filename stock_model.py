@@ -979,6 +979,12 @@ def calu_stock_data(original, config=None):
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') & (df['CW_isAbnormal_tag'] == 'Y'),
            ['daily_stock_pltN']] = df['daily_stock_qty'] / df['pltQty']
 
+    ### ---------------------------------------------------------------------------
+    ### 增加库存箱数字段 daily_stock_ctnN
+    df['daily_stock_ctnN'] = df['daily_stock_toteN']
+    df.loc[(df['CW_isAbnormal_tag'] == 'N') & (df['fullCaseUnit'] > 0),
+           ['daily_stock_ctnN']] = df['daily_stock_qty'] / df['fullCaseUnit']
+
     '''
     托盘料箱重量分级
     '''
@@ -1170,6 +1176,13 @@ def calu_stock_data(original, config=None):
            ['daily_deli_pltN']] = df['daily_deli_qty'] / df['ctn_pltQty']
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') & (df['CW_isAbnormal_tag'] == 'Y'),
            ['daily_deli_pltN']] = df['daily_deli_qty'] / df['pltQty']
+
+
+    ### ----------------------------------------------------
+    ### 增加月底日均出库折合箱数
+    df['daily_deli_ctnN'] = df['daily_deli_toteN']
+    df.loc[(df['CW_isAbnormal_tag'] == 'N') & (df['fullCaseUnit'] >0),
+           ['daily_deli_ctnN']] = df['daily_deli_qty'] / df['fullCaseUnit']
 
     # 97 CT	月度日均出库SKU数量折算_现状
     df['daily_deli_sku'] = df['monthly_deli_cumu_days'] / mdays

@@ -121,12 +121,19 @@ def generate_pivot_table(df, outFileName):
                       'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN',
                       'current_stockQty', 'current_pickQty']]
     idx12 = ['size']
-    pt_col_com = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-                  'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m',
+    pt_col_com = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_ctnN',
+                  'daily_stock_vol_m','daily_stock_weight',
+                  'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_ctnN',
+                  'daily_deli_vol_m',
                   'current_pltStockN', 'current_pltPickN',
                   'current_stockQty', 'current_pickQty']
-    size = general_class(size_df, sku=sku, index=idx12, pt_col=pt_col_com, isAvg=True)
+    size = general_class(df, sku=sku, index=idx12, pt_col=pt_col_com, isAvg=True)
     size.to_excel(excel_writer=writer, sheet_name='12-size', inf_rep='')
+
+    # 件型关联
+    idx13 = ['ctn_size','size']
+    size = general_class(df, sku=sku, index=idx13, pt_col=pt_col_com, isAvg=True)
+    size.to_excel(excel_writer=writer, sheet_name='13-size_rele', inf_rep='')
 
     '''
     # 113透视_CLASS1_O1
@@ -420,7 +427,8 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
             col = ['daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
                    'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         else:
-            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_vol_m',
+            col = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_ctnN',
+                   'daily_stock_vol_m',
                    'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_vol_m']
         pt_col = col
 
