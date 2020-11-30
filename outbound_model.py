@@ -49,12 +49,12 @@ def outbound(sku_ref, outbound_org, result_path):
     df['pltN'] = 0
     df.loc[(df['pltQty'] > 0), ['pltN']] = np.floor(df['total_qty'] / df['pltQty'])
 
-    # 15 P 一级箱规原箱订购箱数折算
-    df['ctnN'] = 0
-    df.loc[(df['fullCaseUnit'] > 0), ['ctnN']] = np.floor(df['total_qty'] / df['fullCaseUnit'])
-
     ## 整托订购件数
     df['pltQ'] = df['pltN'] * df['pltQty']
+
+    # 15 P 一级箱规原箱订购箱数折算
+    df['ctnN'] = 0
+    df.loc[(df['fullCaseUnit'] > 0), ['ctnN']] = np.floor((df['total_qty'] - df['pltQ']) / df['fullCaseUnit'])
 
     # 16 Q 一级箱规原箱订购件数折算
     df['ctnQ'] = df['ctnN'] * df['fullCaseUnit']
@@ -72,7 +72,7 @@ def outbound(sku_ref, outbound_org, result_path):
     df.loc[(df['fullCaseUnit'] > 0), ['piece2ctnN']] = np.floor(df['pieceQ'] / df['fullCaseUnit'])
 
     ## 散件折合料箱数
-    df['piece2toteN'] = round(df['pieceQ'] * df['corrVol'] / config.TOTE['valid_vol'], 2)
+    df['piece2toteN'] = df['pieceQ'] * df['corrVol'] / config.TOTE['valid_vol']
 
     # 散件折合整箱对应件数
     df['piece2ctn_qty'] = 0
@@ -423,19 +423,19 @@ def outbound(sku_ref, outbound_org, result_path):
         else:
             sku_detail.loc[index, ['ABC_MPDV']] = 'MPDV' + '_' + config.ABC_CLASS[3]
 
-    sku_detail['ABC_MPDN'] = 'ZZ' + '_' + config.ABC_CLASS[4]
+    sku_detail['ABC_MPDK'] = 'ZZ' + '_' + config.ABC_CLASS[4]
     for index, row in sku_detail.iterrows():
         cumu_rate = sku_detail[(sku_detail['count_rank'] <= row['count_rank'])]['count_rate'].sum()
         if row['count_rank'] == 1:
-            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDK']] = 'MPDK' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[0]:
-            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[0]
+            sku_detail.loc[index, ['ABC_MPDK']] = 'MPDK' + '_' + config.ABC_CLASS[0]
         elif cumu_rate <= config.ABC_INTERVAL[1]:
-            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[1]
+            sku_detail.loc[index, ['ABC_MPDK']] = 'MPDK' + '_' + config.ABC_CLASS[1]
         elif cumu_rate <= config.ABC_INTERVAL[2]:
-            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[2]
+            sku_detail.loc[index, ['ABC_MPDK']] = 'MPDK' + '_' + config.ABC_CLASS[2]
         else:
-            sku_detail.loc[index, ['ABC_MPDN']] = 'MPDN' + '_' + config.ABC_CLASS[3]
+            sku_detail.loc[index, ['ABC_MPDK']] = 'MPDK' + '_' + config.ABC_CLASS[3]
 
     # --------------------------------------------------------------------------------------------
     # 根据 orderID 匹配订单详细信息到原始数据   订单结构标识/EQ/EN/EV/EQ_class/EN_class/EV_class
@@ -450,10 +450,10 @@ def outbound(sku_ref, outbound_org, result_path):
     df_s = pd.merge(df_s, order_detail_s, how='left', on='orderID', sort=False)
 
     # 根据 SKU_ID 匹配SKU详细信息   DIQ_class/DIK_class/DIV_class
-    df = pd.merge(df, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']],
+    df = pd.merge(df, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDK']],
                   how='left', on='SKU_ID', sort=False)
 
-    rele_df_source = df[['orderID', 'size', 'order_inline_PC_tag', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']]
+    rele_df_source = df[['orderID', 'size', 'order_inline_PC_tag', 'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDK']]
 
     order_group = rele_df_source.groupby('orderID')
     order_relevance = {}
@@ -478,7 +478,7 @@ def outbound(sku_ref, outbound_org, result_path):
         t_DV_ABC.sort()
         t_DV_ABC = '-'.join(t_DV_ABC)
 
-        t_DK_ABC = list(filter(None, list(set(v['ABC_MPDN']))))
+        t_DK_ABC = list(filter(None, list(set(v['ABC_MPDK']))))
         t_DK_ABC.sort()
         t_DK_ABC = '-'.join(t_DK_ABC)
 
@@ -536,7 +536,7 @@ def outbound(sku_ref, outbound_org, result_path):
     ## 添加 order维度的 EV_class
     df_zs = pd.merge(df_zs, order_detail[['orderID', 'EV_class']], on='orderID', how='left', sort=False)
     df_zs = pd.merge(df_zs, sku_detail[['SKU_ID', 'DIQ_class', 'DIK_class', 'DIV_class',
-                                        'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDN']],
+                                        'ABC_MPDQ', 'ABC_MPDV', 'ABC_MPDK']],
                      how='left', on='SKU_ID', sort=False)
 
     df_zs['EQ_class_all'] = ''
@@ -682,7 +682,7 @@ def outbound(sku_ref, outbound_org, result_path):
     # order_type.to_excel(excel_writer=writer, sheet_name='32-DQ_ABC&rele', inf_rep='')
 
     # DK-ABC 透视
-    idx34 = ['ABC_MPDN']
+    idx34 = ['ABC_MPDK']
     order_releSize = out_order_pivot(df, index=idx34)
     order_releSize.to_excel(excel_writer=writer, sheet_name='33-DK_ABC', inf_rep='')
 
@@ -691,7 +691,7 @@ def outbound(sku_ref, outbound_org, result_path):
     order_type.to_excel(excel_writer=writer, sheet_name='34-DK_ABC_rele', inf_rep='')
 
     # # DK-ABC&rele 透视
-    # idx36 = ['ABC_MPDN', 'DK-ABC_rele']
+    # idx36 = ['ABC_MPDK', 'DK-ABC_rele']
     # order_releSize = out_order_pivot(df, index=idx36)
     # order_releSize.to_excel(excel_writer=writer, sheet_name='34-DK_ABC&rele', inf_rep='')
 
