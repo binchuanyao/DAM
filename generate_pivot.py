@@ -1269,7 +1269,7 @@ def out_zs_qty(df_zs, index=None, sku=None):
                                values=sku, aggfunc='count',
                                fill_value=0,
                                margins=True).reset_index()
-    print(lineCount.columns)
+    # print(lineCount.columns)
     lineCount.columns = index + ['line_count']
 
     order_dim_pt = pd.pivot_table(df_zs, index=index,
