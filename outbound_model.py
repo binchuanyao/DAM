@@ -573,21 +573,25 @@ def outbound(sku_ref, outbound_org, result_path):
                         df_zs.loc[index, ['EIV_class_zs']] = config.PC_CLASS[i][0]
                         break
 
-
-
     ### ----------------------------------------------------------------------------------
     # 将计算结果写入文件
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
-    df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
-    df_zs.to_excel(excel_writer=writer, sheet_name='00-outBound_zs', inf_rep='')
-    order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
+    # df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
+    # df_zs.to_excel(excel_writer=writer, sheet_name='00-outBound_zs', inf_rep='')
+    # order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
 
     ## 计算SKU维度信息
     sku_detail = pd.merge(sku_detail, df[['SKU_ID', 'pltQty', 'fullCaseUnit']])
 
-    sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
+    # sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
+
+    format_data(writer, df=df, sheet_name='00-outBound')
+    format_data(writer, df=df_zs, sheet_name='00-outBound_zs')
+    format_data(writer, df=order_detail, sheet_name='01-order_detail')
+    format_data(writer, df=sku_detail, sheet_name='02-sku_detail')
+
     writer.close()
     writer.save()
 

@@ -390,9 +390,11 @@ def get_stock_factor(df, config, writer):
     palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
             palletStock_factor['current_pltStockN'] *
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
-    palletStock_factor.to_excel(excel_writer=writer,
-                                sheet_name='stock_factor_{}_{}'.format(plt_long, plt_width),
-                                inf_rep='')
+    # palletStock_factor.to_excel(excel_writer=writer,
+    #                             sheet_name='stock_factor_{}_{}'.format(plt_long, plt_width),
+    #                             inf_rep='')
+    format_data(writer, df=palletStock_factor, sheet_name='stock_factor_{}_{}'.format(plt_long, plt_width),
+                index=['warehouse'])
 
     ### 拣选位托盘系数
     palletPick_factor = pd.pivot_table(df, index='warehouse', values=['current_pltPickN', 'current_pickVol_m'],
@@ -403,10 +405,12 @@ def get_stock_factor(df, config, writer):
             config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
     # write to file
-    palletPick_factor.to_excel(excel_writer=writer,
-                               sheet_name='pick_factor_{}_{}'.format(plt_long, plt_width),
-                               inf_rep='')
+    # palletPick_factor.to_excel(excel_writer=writer,
+    #                            sheet_name='pick_factor_{}_{}'.format(plt_long, plt_width),
+    #                            inf_rep='')
 
+    format_data(writer, df=palletPick_factor, sheet_name='pick_factor_{}_{}'.format(plt_long, plt_width),
+                index=['warehouse'])
 
 
 def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True, isAvg=False):
@@ -1582,6 +1586,24 @@ def layout_format(writer):
     cap_list = [chr(i) for i in range(65, 91)]
     # writer = pd.ExcelWriter(file)
     workbook = writer.book
+
+    # 设置格式
+    fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light', 'font_size': 9})
+    percent_fmt = workbook.add_format({'num_format': '0.00%'})
+    amt_fmt = workbook.add_format({'num_format': '#,##0'})
+    dec2_fmt = workbook.add_format({'num_format': '#,##0.00'})
+    dec4_fmt = workbook.add_format({'num_format': '#,##0.0000'})
+    border_format = workbook.add_format({'border': 1})
+
+    note_fmt = workbook.add_format(
+        {'bold': True, 'font_name': 'Microsoft YaHei Light', 'font_size': 9,
+         'font_color': 'red', 'align': 'center', 'valign': 'vcenter'})
+    date_fmt = workbook.add_format({'bold': False, 'font_name': u'微软雅黑', 'num_format': 'yyyy-mm-dd'})
+
+    col_fmt = workbook.add_format(
+        {'bold': True, 'font_size': 9, 'font_name': u'微软雅黑', 'num_format': 'yyyy-mm-dd', 'bg_color': '#9FC3D1',
+         'valign': 'vcenter', 'align': 'center'})
+    highlight_fmt = workbook.add_format({'bg_color': '#FFD7E2', 'num_format': '0.00%'})
     fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light',
                                'align': 'center',
                                'valign': 'vcenter',
@@ -1596,7 +1618,105 @@ def layout_format(writer):
         # cols = sheet.get_col()
         # cols_name = cap_list[cols]
         sheet.set_column('A:Z', 12, fmt)
-        sheet.conditional_format('A0:Z20', {'type': 'no_blanks', 'format': border_format})
+        sheet.conditional_format('A1:Z20', {'type': 'no_blanks', 'format': border_format})
         # sheet.conditional_format('A0:{}{}'.format('M', 10), {'format': border_format})
 
     writer.save()
+
+
+def format_data(writer, df, sheet_name, index=None):
+    # book = load_workbook(writer.path)
+    # writer.book = book
+    if index is None:
+        index_n = 0
+    else:
+        index_n = len(index)
+
+    workbook = writer.book
+
+    for col in list(df.columns):
+        if 'cumu' in col:
+            df.loc[(df[df.columns[0]] == 'All'), [col]] = ''
+        df.loc[(df[col] == 'inf'), [col]] = ''
+
+    # 设置格式
+    fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light', 'font_size': 9,
+                               'align': 'center', 'valign': 'vcenter'})
+    percent_fmt = workbook.add_format({'num_format': '0.00%'})
+    amt_fmt = workbook.add_format({'num_format': '#,##0'})
+    dec2_fmt = workbook.add_format({'num_format': '#,##0.00'})
+    dec4_fmt = workbook.add_format({'num_format': '#,##0.0000'})
+    border_format = workbook.add_format({'border': 1})
+    col_fmt = workbook.add_format(
+        {'font_size': 9, 'font_name': 'Microsoft YaHei Light', 'num_format': 'yyyy-mm-dd',
+         'valign': 'vcenter', 'align': 'center'})
+    # 'bg_color': '#9FC3D1','bold': True,
+
+    ### df写入表格
+    df.to_excel(excel_writer=writer, sheet_name=sheet_name, encoding='utf8', header=True, index=False)
+    worksheet1 = writer.sheets[sheet_name]
+
+    ### 数据源行数，和列数
+    rows = df.shape[0] + 1
+    cols = df.shape[1]
+
+    cap_list = get_char_list(100)
+
+    ### 设置列宽
+    worksheet1.set_column('A:{}'.format(cap_list[cols]), 15, fmt)
+
+    ### 添加边框
+    worksheet1.conditional_format('A1:{}{}'.format(cap_list[cols], rows),
+                                  {'type': 'no_blanks', 'format': border_format})
+    # 'type': 'cell','criteria': '>', 'value': 0, 'format': border_format
+
+    ### 按列名设备列的格式
+    for i, col in enumerate(df.columns.values):
+        worksheet1.write(0, i, col, col_fmt)
+        # print(i, index_n, col)
+        if i > index_n:
+            if '%' in col:
+                # print(col, '百分数')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '<=', 'value': 1, 'format': percent_fmt})
+            elif 'vol' in col or 'Vol' in col or 'VOL' in col or 'avg_weight' in col:
+                # print(col, '4位小数，千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': dec4_fmt})
+            elif 'per' in col or 'days' in col or 'avg' in col:
+                # print(col, '2位小数，千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': dec2_fmt})
+            elif 'piece2ctn_remainder' in col or 'kg/m3' in col or 'avg_pltQty' in col:
+                # print(col, '千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': amt_fmt})
+            elif ('N' in col or 'Q' in col) and ('2' not in col) and ('daily' not in col):
+                # print(col, '千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': amt_fmt})
+            elif ('count' in col or 'qty' in col or 'SKU_ID' in col or 'sku' in col) and ('2' not in col):
+                # print(col, '千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': amt_fmt})
+            else:
+                # print(col, '2位小数，千分位')
+                worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
+                                              {'type': 'cell', 'criteria': '>', 'value': 0, 'format': dec2_fmt})
+
+    worksheet1.conditional_format('A1:{}{}'.format(cap_list[cols], rows),
+                                  {'type': 'no_blanks', 'format': border_format})
+
+
+def get_char_list(n):
+    char_list = [chr(i) for i in range(65, 91)]
+
+    for i in range(65, 91):
+        for j in range(65, 91):
+            char_list.append(chr(i) + chr(j))
+            if len(char_list) > n:
+                break
+        if len(char_list) > n:
+            break
+
+    return char_list
