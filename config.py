@@ -27,7 +27,7 @@ class Config:
         # 托盘存储
         self.PALLET_STOCK = {
             'long': 1200,
-            'width': 1000,
+            'width': 1100,
             'plt_height': 150,
             'valid_height': 1300,
             'rate': 0.8,
@@ -45,7 +45,7 @@ class Config:
         # 托盘拣选
         self.PALLET_PICK = {
             'long': 1200,
-            'width': 1000,
+            'width': 1100,
             'plt_height': 150,
             'valid_height': 1300,
             'rate': 0.4,

@@ -669,7 +669,8 @@ def calu_stock_data(original, config=None):
     ## 原箱件型辅助列
     df['ctn_max_side'] = df[['ctn_long', 'ctn_width', 'ctn_height']].max(axis=1)
     df['ctn_min_side'] = df[['ctn_long', 'ctn_width', 'ctn_height']].min(axis=1)
-    df['ctn_mid_side'] = df['ctn_max_side'] - df['ctn_min_side']
+    df['ctn_mid_side'] = (df['ctn_long'] + df['ctn_width'] + df['ctn_height']) - \
+                         df['ctn_max_side'] - df['ctn_min_side']
 
     df['size'] = ''  # '4H'
     df.loc[(df['corrLongest'] <= config.SIZE['longest'][0]) &
