@@ -152,9 +152,9 @@ def calu_stock_data(original, config=None):
     # print('test daily_stock_qty')
     # print(df[['I_class','monthly_stock_cumu_qty', 'daily_stock_qty']])
     # 80 CC 月度日均库存体积(mm3)_现状
-    df['daily_stock_vol_mm'] = df['daily_stock_qty'] * df['vol']
+    df['daily_stock_vol_mm3'] = df['daily_stock_qty'] * df['vol']
     # 81 CD 月度日均库存体积(m3)_现状
-    df['daily_stock_vol_m'] = df['daily_stock_qty'] * df['vol'] / pow(10, 9)
+    df['daily_stock_vol_m3'] = df['daily_stock_qty'] * df['vol'] / pow(10, 9)
     # 82. CE 月度日均库存重量(kg)_现状
     df['daily_stock_weight'] = df['daily_stock_qty'] * df['weight']  # weight or weight_corr
 
@@ -178,9 +178,9 @@ def calu_stock_data(original, config=None):
             df.loc[index, ['daily_order_times']] = round(row['monthly_deli_cumu_times'] / mdays, 2)
 
     # 93. CP 月度日均出库体积(mm3)_现状
-    df['daily_deli_vol_mm'] = df['daily_deli_qty'] * df['vol']
+    df['daily_deli_vol_mm3'] = df['daily_deli_qty'] * df['vol']
     # 94. CQ 月度日均出库体积(m3)_现状
-    df['daily_deli_vol_m'] = df['daily_deli_qty'] * df['vol'] / pow(10, 9)
+    df['daily_deli_vol_m3'] = df['daily_deli_qty'] * df['vol'] / pow(10, 9)
     # 月度日均出库重量(kg)_现状
     df['daily_deli_weight'] = df['daily_deli_qty'] * df['weight']  # weight or weight_corr
 
@@ -191,9 +191,9 @@ def calu_stock_data(original, config=None):
     df['daily_rec_qty'] = df['monthly_rec_cumu_qty'] / mdays  # 月度日均出库件数
     df.loc[(df['daily_rec_qty'].isna()), ['daily_rec_qty']] = 0
     # 102. CY 月度日均入库体积(mm3)_现状
-    df['daily_rec_vol_mm'] = df['daily_rec_qty'] * df['vol']
+    df['daily_rec_vol_mm3'] = df['daily_rec_qty'] * df['vol']
     # 103. CZ 月度日均入库体积(m3)_现状
-    df['daily_rec_vol_m'] = df['daily_rec_qty'] * df['vol'] / pow(10, 9)
+    df['daily_rec_vol_m3'] = df['daily_rec_qty'] * df['vol'] / pow(10, 9)
     # 月度日均入库重量(kg)_现状
     df['daily_rec_weight'] = df['daily_rec_qty'] * df['weight']  # weight or weight_corr
 
@@ -700,20 +700,20 @@ def calu_stock_data(original, config=None):
     实际日均出库体积
     '''
     # 112 DI 月度实际日均出库体积(mm3)_现状
-    df['prac_daily_deli_vol_mm'] = df['prac_daily_deli_qty'] * df['corrVol']
-    df.loc[(df['corrSW_isAbnormal_tag'] == 'Y'), 'prac_daily_deli_vol_mm'] = 0
+    df['prac_daily_deli_vol_mm3'] = df['prac_daily_deli_qty'] * df['corrVol']
+    df.loc[(df['corrSW_isAbnormal_tag'] == 'Y'), 'prac_daily_deli_vol_mm3'] = 0
     # 113 DJ 月度实际日均出库体积(m3)_现状
-    df['prac_daily_deli_vol_m'] = df['prac_daily_deli_vol_mm'] / pow(10, 9)
+    df['prac_daily_deli_vol_m3'] = df['prac_daily_deli_vol_mm3'] / pow(10, 9)
 
     '''
     ABC分类，按日均出库件数&实际日均出库件数 计算累计出库比例
     '''
     # 添加辅助列 出库件数占比，出库体积占比
     df['daily_qty_rate'] = df['daily_deli_qty'] / df['daily_deli_qty'].sum()
-    df['daily_vol_rate'] = df['daily_deli_vol_m'] / df['daily_deli_vol_m'].sum()
+    df['daily_vol_rate'] = df['daily_deli_vol_m3'] / df['daily_deli_vol_m3'].sum()
 
     df['prac_daily_qty_rate'] = df['prac_daily_deli_qty'] / df['prac_daily_deli_qty'].sum()
-    df['prac_daily_vol_rate'] = df['prac_daily_deli_vol_m'] / df['prac_daily_deli_vol_m'].sum()
+    df['prac_daily_vol_rate'] = df['prac_daily_deli_vol_m3'] / df['prac_daily_deli_vol_m3'].sum()
 
     df['qty_rank'] = df['daily_qty_rate'].rank(ascending=False, method='first')
     df['vol_rank'] = df['daily_vol_rate'].rank(ascending=False, method='first')
@@ -1384,16 +1384,16 @@ def calu_stock_data(original, config=None):
            (df['corrLongest'] <= config.SHELF_D300['width']) &
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]) &
-           (df['daily_stock_vol_mm'] / config.SHELF_D300['combine_locs'] <= D300_maxUnitVol),
+           (df['daily_stock_vol_mm3'] / config.SHELF_D300['combine_locs'] <= D300_maxUnitVol),
            ['current_shelfD300_num']] \
-        = df['daily_stock_vol_mm'] / config.SHELF_D300['valid_vol']
+        = df['daily_stock_vol_mm3'] / config.SHELF_D300['valid_vol']
     # 最长边<300 & 轻架 & 存拣合一 & < 最小货格的N（每货位SKU上限）等分 → 最小货格N等分 * 1货多位 位置数
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') &
            (df['daily_stock_qty'] > 0) &
            (df['corrLongest'] <= config.SHELF_D300['width']) &
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]) &
-           (df['daily_stock_vol_mm'] / config.SHELF_D300['combine_locs']
+           (df['daily_stock_vol_mm3'] / config.SHELF_D300['combine_locs']
             <= D300_minUnitVol / config.SHELF_D300['sku_upper']),
            ['current_shelfD300_num']] \
         = D300_minUnitVol / config.SHELF_D300['sku_upper'] / config.SHELF_D300['valid_vol'] * config.SHELF_D300[
@@ -1434,16 +1434,16 @@ def calu_stock_data(original, config=None):
     #             if row['corrLongest'] <= config.SHELF_D300['width']:
     #                 if row['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]:
     #                     if row['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]:
-    #                         if row['daily_stock_vol_mm'] / config.SHELF_D300['combine_locs'] <= D300_minUnitVol / \
+    #                         if row['daily_stock_vol_mm3'] / config.SHELF_D300['combine_locs'] <= D300_minUnitVol / \
     #                                 config.SHELF_D300['sku_upper']:
     #                             df.loc[index, ['current_shelfD300_num']] = D300_minUnitVol / config.SHELF_D300[
     #                                 'sku_upper'] / \
     #                                                                        config.SHELF_D300['valid_vol'] * \
     #                                                                        config.SHELF_D300[
     #                                                                            'combine_locs']
-    #                         elif row['daily_stock_vol_mm'] / config.SHELF_D300['combine_locs'] <= D300_maxUnitVol / \
+    #                         elif row['daily_stock_vol_mm3'] / config.SHELF_D300['combine_locs'] <= D300_maxUnitVol / \
     #                                 config.SHELF_D300['sku_upper']:
-    #                             df.loc[index, ['current_shelfD300_num']] = row['daily_stock_vol_mm'] / config.SHELF_D300[
+    #                             df.loc[index, ['current_shelfD300_num']] = row['daily_stock_vol_mm3'] / config.SHELF_D300[
     #                                 'valid_vol']
     #                         else:
     #                             df['current_shelfD300_num'] = 0
@@ -1486,14 +1486,14 @@ def calu_stock_data(original, config=None):
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]),
            ['current_shelfD500_num']] \
-        = df['daily_stock_vol_mm'] / config.SHELF_D500['valid_vol']
+        = df['daily_stock_vol_mm3'] / config.SHELF_D500['valid_vol']
     # 最长边<500 & 轻架 & 存拣合一 & < 最小货格的N（每货位SKU上限）等分 → 最小货格N等分 * 1货多位 位置数
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') &
            (df['daily_stock_qty'] > 0) &
            (df['corrLongest'] <= config.SHELF_D500['width']) &
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]) &
-           (df['daily_stock_vol_mm'] / config.SHELF_D500['combine_locs']
+           (df['daily_stock_vol_mm3'] / config.SHELF_D500['combine_locs']
             <= D500_minUnitVol / config.SHELF_D500['sku_upper']),
            ['current_shelfD500_num']] \
         = D500_minUnitVol / config.SHELF_D500['sku_upper'] / config.SHELF_D500['valid_vol'] * config.SHELF_D500[
@@ -1583,7 +1583,7 @@ def calu_stock_data(original, config=None):
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]),
            ['current_shelfD600_num']] \
-        = df['daily_stock_vol_mm'] / config.SHELF_D600['valid_vol']
+        = df['daily_stock_vol_mm3'] / config.SHELF_D600['valid_vol']
     # 最长边<600 & 轻架 & 存拣合一 & < 最小货格的N（每货位SKU上限）等分 → 最小货格N等分 * 1货多位 位置数
     df.loc[(df['corrSW_isAbnormal_tag'] == 'N') &
            (df['daily_stock_qty'] > 0) &
@@ -1592,7 +1592,7 @@ def calu_stock_data(original, config=None):
            (df['corrLongest'] <= config.SHELF_D600['width']) &
            (df['current_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]) &
            (df['current_stock_mode'] == config.STOCK_TACTIC['mode'][0]) &
-           (df['daily_stock_vol_mm'] / config.SHELF_D600['combine_locs']
+           (df['daily_stock_vol_mm3'] / config.SHELF_D600['combine_locs']
             <= D600_minUnitVol / config.SHELF_D600['sku_upper']),
            ['current_shelfD600_num']] \
         = D600_minUnitVol / config.SHELF_D600['sku_upper'] / config.SHELF_D600['valid_vol'] * config.SHELF_D600[
@@ -1692,7 +1692,7 @@ def calu_stock_data(original, config=None):
                 if row['current_stock_equipment'] == '多穿':
                     if row['current_stock_mode'] == '存拣合一':
                         df.loc[index, ['current_shuttle_num']] = np.ceil(
-                            row['daily_stock_vol_mm'] / config.TOTE['valid_vol'])
+                            row['daily_stock_vol_mm3'] / config.TOTE['valid_vol'])
                     else:
                         if config.SHUTTLE['replenish'] == '整托':
                             df.loc[index, ['current_shuttle_num']] = np.ceil(np.ceil(
@@ -1790,12 +1790,12 @@ def calu_stock_data(original, config=None):
                                                                                         config.SHELF_D600['2plt']
 
     # 129 DZ 拣货位商品体积(m3)_现状
-    df['current_pickVol_m'] = df['current_pickQty'] * df['corrVol'] / pow(10, 9)
+    df['current_pickvol_m3'] = df['current_pickQty'] * df['corrVol'] / pow(10, 9)
 
     # 130 EA 存储位商品体积(m3)_现状
-    df['current_stockVol_m'] = df['current_stockQty'] * df['corrVol'] / pow(10, 9)
+    df['current_stockvol_m3'] = df['current_stockQty'] * df['corrVol'] / pow(10, 9)
 
-    df['vol_factor'] = df['current_stockVol_m'] * pow(10, 9) / (
+    df['vol_factor'] = df['current_stockvol_m3'] * pow(10, 9) / (
             df['current_pltStockN'] * config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
 
     # 131 EB 存储位箱规体积(m3)_现状
@@ -1823,7 +1823,7 @@ def calu_stock_data(original, config=None):
     df['design_daily_stock_qty'] = df['daily_stock_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe']
 
     # 154 EY 月度日均库存体积(m3)(随库存周期改变-含SKU增加库存)_规划 design_daily_stock_vol_m
-    df['design_daily_stock_vol_m'] = df['daily_stock_vol_m'] * config.DESIGN_COEFFICIENT['total_qty_coe']
+    df['design_daily_stock_vol_m3'] = df['daily_stock_vol_m3'] * config.DESIGN_COEFFICIENT['total_qty_coe']
 
     # 155 EZ 月度日均库存折合托盘数量(随SKU数量及库存周期改变-含SKU增加库存-按额定体积&重量折算)_规划
     df['design_daily_stock_pltN'] = df['daily_stock_pltN'] * config.DESIGN_COEFFICIENT['total_qty_coe']
@@ -1835,7 +1835,7 @@ def calu_stock_data(original, config=None):
     df['design_daily_deli_qty'] = df['daily_deli_qty'] * config.DESIGN_COEFFICIENT['total_qty_coe']
 
     # 158 FC 月度日均出库体积(m3)(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
-    df['design_daily_deli_vol_m'] = df['daily_deli_vol_m'] * config.DESIGN_COEFFICIENT['total_qty_coe']
+    df['design_daily_deli_vol_m3'] = df['daily_deli_vol_m3'] * config.DESIGN_COEFFICIENT['total_qty_coe']
 
     # 159 FD 月度日均出库折合托盘数量(随SKU数量及库存周期改变-含SKU增加库存-含调拨)_规划
     df['design_daily_deli_pltN'] = df['daily_deli_pltN'] * config.DESIGN_COEFFICIENT['total_qty_coe']
@@ -1907,15 +1907,15 @@ def calu_stock_data(original, config=None):
                 if row['corrLongest'] <= config.SHELF_D300['width']:
                     if row['design_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]:  # 轻架
                         if row['design_stock_mode'] == config.STOCK_TACTIC['mode'][0]:  # 存拣合一
-                            if row['daily_stock_vol_mm'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
+                            if row['daily_stock_vol_mm3'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
                                     config.SHELF_D300['combine_locs'] <= D300_minUnitVol / config.SHELF_D300[
                                 'sku_upper']:
                                 df.loc[index, ['design_shelfD300_num']] = D300_minUnitVol / config.SHELF_D300[
                                     'sku_upper'] / config.SHELF_D300['valid_vol'] * config.SHELF_D300['combine_locs']
-                            elif row['daily_stock_vol_mm'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
+                            elif row['daily_stock_vol_mm3'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
                                     config.SHELF_D300['combine_locs'] <= D300_maxUnitVol / config.SHELF_D300[
                                 'sku_upper']:
-                                df.loc[index, ['design_shelfD300_num']] = row['daily_stock_vol_mm'] * \
+                                df.loc[index, ['design_shelfD300_num']] = row['daily_stock_vol_mm3'] * \
                                                                           config.DESIGN_COEFFICIENT[
                                                                               'single_sku_qty_coe'] / config.SHELF_D300[
                                                                               'valid_vol']
@@ -1945,14 +1945,14 @@ def calu_stock_data(original, config=None):
                     if row['corrLongest'] <= config.SHELF_D500['width']:
                         if row['design_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]:  # 轻架
                             if row['design_stock_mode'] == config.STOCK_TACTIC['mode'][0]:  # 存拣合一
-                                if row['daily_stock_vol_mm'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
+                                if row['daily_stock_vol_mm3'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
                                         config.SHELF_D500['combine_locs'] <= D500_minUnitVol / config.SHELF_D500[
                                     'sku_upper']:
                                     df.loc[index, ['design_shelfD500_num']] = D500_minUnitVol / config.SHELF_D500[
                                         'sku_upper'] / config.SHELF_D500['valid_vol'] * config.SHELF_D500[
                                                                                   'combine_locs']
                                 else:
-                                    df.loc[index, ['design_shelfD500_num']] = row['daily_stock_vol_mm'] * \
+                                    df.loc[index, ['design_shelfD500_num']] = row['daily_stock_vol_mm3'] * \
                                                                               config.DESIGN_COEFFICIENT[
                                                                                   'single_sku_qty_coe'] / \
                                                                               config.SHELF_D500[
@@ -2007,14 +2007,14 @@ def calu_stock_data(original, config=None):
                     if row['corrLongest'] <= config.SHELF_D600['width']:
                         if row['design_stock_equipment'] == config.STOCK_TACTIC['equipment'][1][0]:  # 轻架
                             if row['design_stock_mode'] == config.STOCK_TACTIC['mode'][0]:  # 存拣合一
-                                if row['daily_stock_vol_mm'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
+                                if row['daily_stock_vol_mm3'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] / \
                                         config.SHELF_D600['combine_locs'] <= D600_minUnitVol / config.SHELF_D600[
                                     'sku_upper']:
                                     df.loc[index, ['design_shelfD600_num']] = D600_minUnitVol / config.SHELF_D600[
                                         'sku_upper'] / config.SHELF_D600['valid_vol'] * config.SHELF_D600[
                                                                                   'combine_locs']
                                 else:
-                                    df.loc[index, ['design_shelfD600_num']] = row['daily_stock_vol_mm'] * \
+                                    df.loc[index, ['design_shelfD600_num']] = row['daily_stock_vol_mm3'] * \
                                                                               config.DESIGN_COEFFICIENT[
                                                                                   'single_sku_qty_coe'] / \
                                                                               config.SHELF_D600[
@@ -2082,7 +2082,7 @@ def calu_stock_data(original, config=None):
                 if row['design_stock_equipment'] == '多穿':
                     if row['design_stock_mode'] == '存拣合一':
                         df.loc[index, ['design_shuttle_num']] = np.ceil(
-                            row['daily_stock_vol_mm'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] /
+                            row['daily_stock_vol_mm3'] * config.DESIGN_COEFFICIENT['single_sku_qty_coe'] /
                             config.TOTE['valid_vol']) * (config.DESIGN_COEFFICIENT['total_qty_coe'] /
                                                          config.DESIGN_COEFFICIENT['single_sku_qty_coe'])
                     else:
@@ -2194,10 +2194,10 @@ def calu_stock_data(original, config=None):
                                                                                       config.SHELF_D600['2plt']
 
     # 145 EP 拣货位商品体积_规划(m3) design_pickVol_m
-    df['design_pickVol_m'] = df['design_pickQty'] * df['corrVol'] / pow(10, 9)
+    df['design_pickvol_m3'] = df['design_pickQty'] * df['corrVol'] / pow(10, 9)
 
     # 146 EQ 存储位商品体积_规划(m3) design_stockVol_m
-    df['design_stockVol_m'] = df['design_stockQty'] * df['corrVol'] / pow(10, 9)
+    df['design_stockvol_m3'] = df['design_stockQty'] * df['corrVol'] / pow(10, 9)
 
     # 147 ER 托盘拣货位总重量_规划(kg) design_pltPickWt
     df['design_pltPickWt'] = df['corrWeight'] * df['design_pickQty'] + np.ceil(
@@ -2245,12 +2245,12 @@ def calu_stock_data(original, config=None):
 
     # pt1 = df.loc[(df['sku_state'] == '良品') & (df['corrSW_isAbnormal_tag'] == 'N') &
     #              (df['current_stock_equipment'] == '托盘'),
-    #              ['warehouse', 'current_pltPickN', 'current_pickVol_m']]
+    #              ['warehouse', 'current_pltPickN', 'current_pickvol_m3']]
 
-    # palletPick_factor = pd.pivot_table(pt1, index='warehouse', values=['current_pltPickN', 'current_pickVol_m'],
+    # palletPick_factor = pd.pivot_table(pt1, index='warehouse', values=['current_pltPickN', 'current_pickvol_m3'],
     #                                    aggfunc=np.sum, fill_value=0).reset_index()
     #
-    # palletPick_factor['factor'] = palletPick_factor['current_pickVol_m'] * pow(10, 9) / (
+    # palletPick_factor['factor'] = palletPick_factor['current_pickvol_m3'] * pow(10, 9) / (
     #         palletPick_factor['current_pltPickN'] *
     #         config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
     #
@@ -2258,13 +2258,13 @@ def calu_stock_data(original, config=None):
     #
     # # 102 透视托盘存储位托盘数，存储位商品总体积，存储位箱规体积(m3)，计算托盘存储位存储系数
     # pt2 = df.loc[(df['sku_state'] == '良品') & (df['corrSW_isAbnormal_tag'] == 'N') & (df['CW_isAbnormal_tag'] == 'N'),
-    #              ['warehouse', 'current_pltStockN', 'current_stockVol_m', 'current_stockCtnVol']]
+    #              ['warehouse', 'current_pltStockN', 'current_stockvol_m3', 'current_stockCtnVol']]
     #
     # palletStock_factor = pd.pivot_table(pt2, index='warehouse',
-    #                                     values=['current_pltStockN', 'current_stockVol_m', 'current_stockCtnVol'],
+    #                                     values=['current_pltStockN', 'current_stockvol_m3', 'current_stockCtnVol'],
     #                                     aggfunc=np.sum, fill_value=0).reset_index()
     #
-    # palletStock_factor['vol_factor'] = palletStock_factor['current_stockVol_m'] * pow(10, 9) / (
+    # palletStock_factor['vol_factor'] = palletStock_factor['current_stockvol_m3'] * pow(10, 9) / (
     #         palletStock_factor['current_pltStockN'] *
     #         config.PALLET_STOCK['valid_vol'] / config.PALLET_STOCK['rate'])
     # palletStock_factor['ctn_factor'] = palletStock_factor['current_stockCtnVol'] * pow(10, 9) / (
@@ -2297,7 +2297,7 @@ def calu_stock_data(original, config=None):
     #                            margins=True).reset_index()
     #
     # good_tmp2 = pd.pivot_table(df, index='sku_state',
-    #                            values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m'], aggfunc='sum',
+    #                            values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3'], aggfunc='sum',
     #                            margins=True).reset_index()
     # good_tmp2.loc[(good_tmp2['sku_state'] == 'All'), ['daily_stock_qty']] = df['daily_stock_qty'].sum()
     # good_tmp2.loc[(good_tmp2['sku_state'] == 'All'), ['daily_stock_sku']] = df['daily_stock_sku'].sum()
@@ -2315,8 +2315,8 @@ def calu_stock_data(original, config=None):
     # stockGood_and_Damaged['daily_stock_qty%'] = stockGood_and_Damaged['daily_stock_qty%'].apply(
     #     lambda x: '%.4f%%' % (x * 100))
     #
-    # stockGood_and_Damaged['daily_stock_vol_m%'] = round(stockGood_and_Damaged['daily_stock_vol_m'] / (
-    #         stockGood_and_Damaged['daily_stock_vol_m'].sum() / 2), 6)
+    # stockGood_and_Damaged['daily_stock_vol_m%'] = round(stockGood_and_Damaged['daily_stock_vol_m3'] / (
+    #         stockGood_and_Damaged['daily_stock_vol_m3'].sum() / 2), 6)
     # stockGood_and_Damaged['daily_stock_vol_m%'] = stockGood_and_Damaged['daily_stock_vol_m%'].apply(
     #     lambda x: '%.4f%%' % (x * 100))
 
@@ -2328,17 +2328,17 @@ def calu_stock_data(original, config=None):
     #
     # # 筛选透视数据
     # size_df = df.loc[(df['sku_state'] == '良品') & (df['stock_qty_isNonZero'] == 'Y'),
-    #                  ['SKU_ID', 'size', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                  ['SKU_ID', 'size', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                   'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #                   'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #                   'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #                   'current_stockQty', 'current_pickQty']]
     #
     # size_tmp1 = pd.pivot_table(size_df, index='size', values='SKU_ID', aggfunc='count', fill_value=0,
     #                            margins=True).reset_index()
     #
     # size_tmp2 = pd.pivot_table(size_df, index='size',
-    #                            values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-    #                                    'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m',
+    #                            values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3', 'daily_stock_weight',
+    #                                    'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3',
     #                                    'current_pltStockN', 'current_pltPickN',
     #                                    'current_pickUnit2plt', 'current_stockQty', 'current_pickQty'],
     #                            aggfunc='sum', fill_value=0,
@@ -2349,12 +2349,12 @@ def calu_stock_data(original, config=None):
     # # 更新汇总数据
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_sku']] = size_df['daily_stock_sku'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_qty']] = size_df['daily_stock_qty'].sum()
-    # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_vol_m']] = size_df['daily_stock_vol_m'].sum()
+    # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_vol_m3']] = size_df['daily_stock_vol_m3'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_weight']] = size_df['daily_stock_weight'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_stock_pltN']] = size_df['daily_stock_pltN'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_deli_sku']] = size_df['daily_deli_sku'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['daily_deli_qty']] = size_df['daily_deli_qty'].sum()
-    # size_pt.loc[(size_pt['size'] == 'All'), ['daily_deli_vol_m']] = size_df['daily_deli_vol_m'].sum()
+    # size_pt.loc[(size_pt['size'] == 'All'), ['daily_deli_vol_m3']] = size_df['daily_deli_vol_m3'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['current_pltStockN']] = size_df['current_pltStockN'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['current_pltPickN']] = size_df['current_pltPickN'].sum()
     # size_pt.loc[(size_pt['size'] == 'All'), ['current_pickUnit2plt']] = size_df['current_pickUnit2plt'].sum()
@@ -2363,9 +2363,9 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # size_pt = size_pt[
-    #     ['size', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #     ['size', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #      'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #      'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #      'current_stockQty', 'current_pickQty']]
     #
     # # 计算比例
@@ -2373,7 +2373,7 @@ def calu_stock_data(original, config=None):
     #     lambda x: '%.4f%%' % (x * 100))
     # size_pt['daily_stock_qty%'] = round(size_pt['daily_stock_qty'] / (size_pt['daily_stock_qty'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
-    # size_pt['daily_stock_vol_m%'] = round(size_pt['daily_stock_vol_m'] / (size_pt['daily_stock_vol_m'].sum() / 2),
+    # size_pt['daily_stock_vol_m%'] = round(size_pt['daily_stock_vol_m3'] / (size_pt['daily_stock_vol_m3'].sum() / 2),
     #                                       6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # size_pt['daily_stock_weight%'] = round(size_pt['daily_stock_weight'] / (size_pt['daily_stock_weight'].sum() / 2),
@@ -2381,7 +2381,7 @@ def calu_stock_data(original, config=None):
     #     lambda x: '%.4f%%' % (x * 100))
     # size_pt['daily_deli_qty%'] = round(size_pt['daily_deli_qty'] / (size_pt['daily_deli_qty'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
-    # size_pt['daily_deli_vol_m%'] = round(size_pt['daily_deli_vol_m'] / (size_pt['daily_deli_vol_m'].sum() / 2),
+    # size_pt['daily_deli_vol_m%'] = round(size_pt['daily_deli_vol_m3'] / (size_pt['daily_deli_vol_m3'].sum() / 2),
     #                                      6).apply(lambda x: '%.4f%%' % (x * 100))
     # size_pt['current_pltStockN%'] = round(size_pt['current_pltStockN'] / (size_pt['current_pltStockN'].sum() / 2),
     #                                       6).apply(lambda x: '%.4f%%' % (x * 100))
@@ -2394,8 +2394,8 @@ def calu_stock_data(original, config=None):
     #
     # # 计算字段
     # size_pt['qty_turnover_days'] = size_pt['daily_stock_qty'] / size_pt['daily_deli_qty']
-    # size_pt['vol_turnover_days'] = size_pt['daily_stock_vol_m'] / size_pt['daily_deli_vol_m']
-    # size_pt['avg_vol'] = size_pt['daily_stock_vol_m'] / size_pt['daily_stock_qty']
+    # size_pt['vol_turnover_days'] = size_pt['daily_stock_vol_m3'] / size_pt['daily_deli_vol_m3']
+    # size_pt['avg_vol'] = size_pt['daily_stock_vol_m3'] / size_pt['daily_stock_qty']
     # size_pt['avg_weight'] = size_pt['daily_stock_weight'] / size_pt['daily_stock_qty']
     # size_pt['avg_pltQty'] = (size_pt['current_stockQty'] + size_pt['current_pickQty']) / \
     #                         (size_pt['current_pltStockN'] + size_pt['current_pltPickN'])
@@ -2408,17 +2408,17 @@ def calu_stock_data(original, config=None):
     # # 筛选透视数据 库存非零sku
     # class_df = df.loc[(df['stock_qty_isNonZero'] == 'Y'),
     #                   ['SKU_ID', 'size', 'I_class', 'II_class', 'III_class', 'IV_class',
-    #                    'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                    'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                    'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #                    'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #                    'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #                    'current_stockQty', 'current_pickQty']]
     #
     # class_tmp1 = pd.pivot_table(class_df, index='I_class', values='SKU_ID', aggfunc='count', fill_value=0,
     #                             margins=True).reset_index()
     #
     # class_tmp2 = pd.pivot_table(class_df, index='I_class',
-    #                             values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-    #                                     'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m',
+    #                             values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3', 'daily_stock_weight',
+    #                                     'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3',
     #                                     'current_pltStockN', 'current_pltPickN',
     #                                     'current_pickUnit2plt', 'current_stockQty', 'current_pickQty'],
     #                             aggfunc='sum', fill_value=0,
@@ -2428,20 +2428,20 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # class_pt = class_pt[
-    #     ['I_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #     ['I_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #      'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #      'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #      'current_stockQty', 'current_pickQty']]
     #
     # # 更新汇总数据
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_sku']] = class_df['daily_stock_sku'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_qty']] = class_df['daily_stock_qty'].sum()
-    # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_vol_m']] = class_df['daily_stock_vol_m'].sum()
+    # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_vol_m3']] = class_df['daily_stock_vol_m3'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_weight']] = class_df['daily_stock_weight'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_stock_pltN']] = class_df['daily_stock_pltN'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_deli_sku']] = class_df['daily_deli_sku'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_deli_qty']] = class_df['daily_deli_qty'].sum()
-    # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_deli_vol_m']] = class_df['daily_deli_vol_m'].sum()
+    # class_pt.loc[(class_pt['I_class'] == 'All'), ['daily_deli_vol_m3']] = class_df['daily_deli_vol_m3'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['current_pltStockN']] = class_df['current_pltStockN'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['current_pltPickN']] = class_df['current_pltPickN'].sum()
     # class_pt.loc[(class_pt['I_class'] == 'All'), ['current_pickUnit2plt']] = class_df['current_pickUnit2plt'].sum()
@@ -2455,20 +2455,20 @@ def calu_stock_data(original, config=None):
     # class_pt['daily_stock_qty%'] = round(class_pt['daily_stock_qty'] / (class_pt['daily_stock_qty'].sum() / 2),
     #                                      6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
-    # class_pt['daily_stock_vol_m%'] = round(class_pt['daily_stock_vol_m'] / (class_pt['daily_stock_vol_m'].sum() / 2),
+    # class_pt['daily_stock_vol_m%'] = round(class_pt['daily_stock_vol_m3'] / (class_pt['daily_stock_vol_m3'].sum() / 2),
     #                                        6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # class_pt['daily_deli_sku%'] = round(class_pt['daily_deli_sku'] / (class_pt['daily_deli_sku'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # class_pt['daily_deli_qty%'] = round(class_pt['daily_deli_qty'] / (class_pt['daily_deli_qty'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
-    # class_pt['daily_deli_vol_m%'] = round(class_pt['daily_deli_vol_m'] / (class_pt['daily_deli_vol_m'].sum() / 2),
+    # class_pt['daily_deli_vol_m%'] = round(class_pt['daily_deli_vol_m3'] / (class_pt['daily_deli_vol_m3'].sum() / 2),
     #                                       6).apply(lambda x: '%.4f%%' % (x * 100))
     #
     # # 计算字段
     # class_pt['qty_turnover_days'] = class_pt['daily_stock_qty'] / class_pt['daily_deli_qty']
-    # class_pt['vol_turnover_days'] = class_pt['daily_stock_vol_m'] / class_pt['daily_deli_vol_m']
-    # class_pt['avg_vol'] = class_pt['daily_stock_vol_m'] / class_pt['daily_stock_qty']
+    # class_pt['vol_turnover_days'] = class_pt['daily_stock_vol_m3'] / class_pt['daily_deli_vol_m3']
+    # class_pt['avg_vol'] = class_pt['daily_stock_vol_m3'] / class_pt['daily_stock_qty']
     # class_pt['avg_weight'] = class_pt['daily_stock_weight'] / class_pt['daily_stock_qty']
     # class_pt['avg_pltQty'] = (class_pt['current_stockQty'] + class_pt['current_pickQty']) / \
     #                          (class_pt['current_pltStockN'] + class_pt['current_pltPickN'])
@@ -2483,9 +2483,9 @@ def calu_stock_data(original, config=None):
     #                                  margins=True).reset_index()
     #
     # size_class_tmp2 = pd.pivot_table(class_df, index=['size', 'I_class'],
-    #                                  values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                                  values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                                          'daily_stock_weight',
-    #                                          'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m',
+    #                                          'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3',
     #                                          'current_pltStockN', 'current_pltPickN',
     #                                          'current_pickUnit2plt', 'current_stockQty', 'current_pickQty'],
     #                                  aggfunc='sum', fill_value=0,
@@ -2495,20 +2495,20 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # size_class_pt = size_class_pt[
-    #     ['size', 'I_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #     ['size', 'I_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #      'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #      'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #      'current_stockQty', 'current_pickQty']]
     #
     # # 更新汇总数据
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_sku']] = class_df['daily_stock_sku'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_qty']] = class_df['daily_stock_qty'].sum()
-    # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_vol_m']] = class_df['daily_stock_vol_m'].sum()
+    # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_vol_m3']] = class_df['daily_stock_vol_m3'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_weight']] = class_df['daily_stock_weight'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_stock_pltN']] = class_df['daily_stock_pltN'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_deli_sku']] = class_df['daily_deli_sku'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_deli_qty']] = class_df['daily_deli_qty'].sum()
-    # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_deli_vol_m']] = class_df['daily_deli_vol_m'].sum()
+    # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['daily_deli_vol_m3']] = class_df['daily_deli_vol_m3'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['current_pltStockN']] = class_df['current_pltStockN'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['current_pltPickN']] = class_df['current_pltPickN'].sum()
     # size_class_pt.loc[(size_class_pt['size'] == 'All'), ['current_pickUnit2plt']] = class_df[
@@ -2526,7 +2526,7 @@ def calu_stock_data(original, config=None):
     #     6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # size_class_pt['daily_stock_vol_m%'] = round(
-    #     size_class_pt['daily_stock_vol_m'] / (size_class_pt['daily_stock_vol_m'].sum() / 2),
+    #     size_class_pt['daily_stock_vol_m3'] / (size_class_pt['daily_stock_vol_m3'].sum() / 2),
     #     6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # size_class_pt['daily_deli_sku%'] = round(
@@ -2536,13 +2536,13 @@ def calu_stock_data(original, config=None):
     #     size_class_pt['daily_deli_qty'] / (size_class_pt['daily_deli_qty'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # size_class_pt['daily_deli_vol_m%'] = round(
-    #     size_class_pt['daily_deli_vol_m'] / (size_class_pt['daily_deli_vol_m'].sum() / 2),
+    #     size_class_pt['daily_deli_vol_m3'] / (size_class_pt['daily_deli_vol_m3'].sum() / 2),
     #     6).apply(lambda x: '%.4f%%' % (x * 100))
     #
     # # 计算字段
     # size_class_pt['qty_turnover_days'] = size_class_pt['daily_stock_qty'] / size_class_pt['daily_deli_qty']
-    # size_class_pt['vol_turnover_days'] = size_class_pt['daily_stock_vol_m'] / size_class_pt['daily_deli_vol_m']
-    # size_class_pt['avg_vol'] = size_class_pt['daily_stock_vol_m'] / size_class_pt['daily_stock_qty']
+    # size_class_pt['vol_turnover_days'] = size_class_pt['daily_stock_vol_m3'] / size_class_pt['daily_deli_vol_m3']
+    # size_class_pt['avg_vol'] = size_class_pt['daily_stock_vol_m3'] / size_class_pt['daily_stock_qty']
     # size_class_pt['avg_weight'] = size_class_pt['daily_stock_weight'] / size_class_pt['daily_stock_qty']
     # size_class_pt['avg_pltQty'] = (size_class_pt['current_stockQty'] + size_class_pt['current_pickQty']) / \
     #                               (size_class_pt['current_pltStockN'] + size_class_pt['current_pltPickN'])
@@ -2553,18 +2553,18 @@ def calu_stock_data(original, config=None):
     # 115透视_WarehouseType_O1  warehouse_pt
     # '''
     # warehouse_df = df[['SKU_ID', 'warehouse',
-    #                    'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                    'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                    'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #                    'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #                    'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #                    'current_stockQty', 'current_pickQty']]
     #
     # warehouse_tmp1 = pd.pivot_table(warehouse_df, index='warehouse', values='SKU_ID', aggfunc='count', fill_value=0,
     #                                 margins=True).reset_index()
     #
     # warehouse_tmp2 = pd.pivot_table(warehouse_df, index='warehouse',
-    #                                 values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                                 values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                                         'daily_stock_weight',
-    #                                         'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m',
+    #                                         'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3',
     #                                         'current_pltStockN', 'current_pltPickN',
     #                                         'current_pickUnit2plt', 'current_stockQty', 'current_pickQty'],
     #                                 aggfunc='sum', fill_value=0,
@@ -2575,16 +2575,16 @@ def calu_stock_data(original, config=None):
     # # 更新汇总数据
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_sku']] = warehouse_df['daily_stock_sku'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_qty']] = warehouse_df['daily_stock_qty'].sum()
-    # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_vol_m']] = warehouse_df[
-    #     'daily_stock_vol_m'].sum()
+    # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_vol_m3']] = warehouse_df[
+    #     'daily_stock_vol_m3'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_weight']] = warehouse_df[
     #     'daily_stock_weight'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_stock_pltN']] = warehouse_df[
     #     'daily_stock_pltN'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_deli_sku']] = warehouse_df['daily_deli_sku'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_deli_qty']] = warehouse_df['daily_deli_qty'].sum()
-    # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_deli_vol_m']] = warehouse_df[
-    #     'daily_deli_vol_m'].sum()
+    # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['daily_deli_vol_m3']] = warehouse_df[
+    #     'daily_deli_vol_m3'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['current_pltStockN']] = warehouse_df[
     #     'current_pltStockN'].sum()
     # warehouse_pt.loc[(warehouse_pt['warehouse'] == 'All'), ['current_pltPickN']] = warehouse_df[
@@ -2597,9 +2597,9 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # warehouse_pt = warehouse_pt[
-    #     ['warehouse', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #     ['warehouse', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty',
-    #      'daily_deli_vol_m', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
+    #      'daily_deli_vol_m3', 'current_pltStockN', 'current_pltPickN', 'current_pickUnit2plt',
     #      'current_stockQty', 'current_pickQty']]
     #
     # # 计算比例
@@ -2609,7 +2609,7 @@ def calu_stock_data(original, config=None):
     #     warehouse_pt['daily_stock_qty'] / (warehouse_pt['daily_stock_qty'].sum() / 2), 6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # warehouse_pt['daily_stock_vol_m%'] = round(
-    #     warehouse_pt['daily_stock_vol_m'] / (warehouse_pt['daily_stock_vol_m'].sum() / 2),
+    #     warehouse_pt['daily_stock_vol_m3'] / (warehouse_pt['daily_stock_vol_m3'].sum() / 2),
     #     6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # warehouse_pt['daily_stock_weight%'] = round(
@@ -2620,7 +2620,7 @@ def calu_stock_data(original, config=None):
     #                                         6).apply(
     #     lambda x: '%.4f%%' % (x * 100))
     # warehouse_pt['daily_deli_vol_m%'] = round(
-    #     warehouse_pt['daily_deli_vol_m'] / (warehouse_pt['daily_deli_vol_m'].sum() / 2),
+    #     warehouse_pt['daily_deli_vol_m3'] / (warehouse_pt['daily_deli_vol_m3'].sum() / 2),
     #     6).apply(lambda x: '%.4f%%' % (x * 100))
     # warehouse_pt['current_pltStockN%'] = round(
     #     warehouse_pt['current_pltStockN'] / (warehouse_pt['current_pltStockN'].sum() / 2),
@@ -2637,8 +2637,8 @@ def calu_stock_data(original, config=None):
     #
     # # 计算字段
     # warehouse_pt['qty_turnover_days'] = warehouse_pt['daily_stock_qty'] / warehouse_pt['daily_deli_qty']
-    # warehouse_pt['vol_turnover_days'] = warehouse_pt['daily_stock_vol_m'] / warehouse_pt['daily_deli_vol_m']
-    # warehouse_pt['avg_vol'] = warehouse_pt['daily_stock_vol_m'] / warehouse_pt['daily_stock_qty']
+    # warehouse_pt['vol_turnover_days'] = warehouse_pt['daily_stock_vol_m3'] / warehouse_pt['daily_deli_vol_m3']
+    # warehouse_pt['avg_vol'] = warehouse_pt['daily_stock_vol_m3'] / warehouse_pt['daily_stock_qty']
     # warehouse_pt['avg_weight'] = warehouse_pt['daily_stock_weight'] / warehouse_pt['daily_stock_qty']
     # warehouse_pt['avg_pltQty'] = (warehouse_pt['current_stockQty'] + warehouse_pt['current_pickQty']) / \
     #                              (warehouse_pt['current_pltStockN'] + warehouse_pt['current_pltPickN'])
@@ -2650,17 +2650,17 @@ def calu_stock_data(original, config=None):
     # '''
     # palletWt_class_df = df.loc[(df['sku_state'] == '良品'),
     #                            ['SKU_ID', 'pltWt_class_palletized', 'pltWt_class_all',
-    #                             'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-    #                             'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m', ]]
+    #                             'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3', 'daily_stock_weight',
+    #                             'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3', ]]
     #
     # palletWt_tmp1 = pd.pivot_table(palletWt_class_df, index='pltWt_class_all', values='SKU_ID', aggfunc='count',
     #                                fill_value=0,
     #                                margins=True).reset_index()
     #
     # palletWt_tmp2 = pd.pivot_table(palletWt_class_df, index='pltWt_class_all',
-    #                                values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                                values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                                        'daily_stock_weight',
-    #                                        'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m'],
+    #                                        'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3'],
     #                                aggfunc='sum', fill_value=0,
     #                                margins=True).reset_index()
     #
@@ -2668,8 +2668,8 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # pltWt_class_pt = pltWt_class_pt[
-    #     ['pltWt_class_all', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
-    #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']]
+    #     ['pltWt_class_all', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
+    #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3']]
     #
     # # 更新汇总数据
     # pltWt_class_pt.loc[(pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_stock_sku']] = \
@@ -2677,8 +2677,8 @@ def calu_stock_data(original, config=None):
     # pltWt_class_pt.loc[(pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_stock_qty']] = \
     #     palletWt_class_df['daily_stock_qty'].sum()
     # pltWt_class_pt.loc[
-    #     (pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_stock_vol_m']] = palletWt_class_df[
-    #     'daily_stock_vol_m'].sum()
+    #     (pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_stock_vol_m3']] = palletWt_class_df[
+    #     'daily_stock_vol_m3'].sum()
     # pltWt_class_pt.loc[
     #     (pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_stock_weight']] = palletWt_class_df[
     #     'daily_stock_weight'].sum()
@@ -2690,8 +2690,8 @@ def calu_stock_data(original, config=None):
     # pltWt_class_pt.loc[(pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_deli_qty']] = \
     #     palletWt_class_df['daily_deli_qty'].sum()
     # pltWt_class_pt.loc[
-    #     (pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_deli_vol_m']] = palletWt_class_df[
-    #     'daily_deli_vol_m'].sum()
+    #     (pltWt_class_pt['pltWt_class_all'] == 'All'), ['daily_deli_vol_m3']] = palletWt_class_df[
+    #     'daily_deli_vol_m3'].sum()
     #
     # # 计算比例
     # pltWt_class_pt['SKU_ID%'] = round(
@@ -2699,14 +2699,14 @@ def calu_stock_data(original, config=None):
     # pltWt_class_pt['daily_stock_qty%'] = round(
     #     pltWt_class_pt['daily_stock_qty'] / (pltWt_class_pt['daily_stock_qty'].sum() / 2), 6)
     # pltWt_class_pt['daily_stock_vol_m%'] = round(
-    #     pltWt_class_pt['daily_stock_vol_m'] / (pltWt_class_pt['daily_stock_vol_m'].sum() / 2), 6)
+    #     pltWt_class_pt['daily_stock_vol_m3'] / (pltWt_class_pt['daily_stock_vol_m3'].sum() / 2), 6)
     # pltWt_class_pt['daily_stock_weight%'] = round(
     #     pltWt_class_pt['daily_stock_weight'] / (pltWt_class_pt['daily_stock_weight'].sum() / 2),
     #     6)
     # pltWt_class_pt['daily_deli_qty%'] = round(
     #     pltWt_class_pt['daily_deli_qty'] / (pltWt_class_pt['daily_deli_qty'].sum() / 2), 6)
     # pltWt_class_pt['daily_deli_vol_m%'] = round(
-    #     pltWt_class_pt['daily_deli_vol_m'] / (pltWt_class_pt['daily_deli_vol_m'].sum() / 2), 6)
+    #     pltWt_class_pt['daily_deli_vol_m3'] / (pltWt_class_pt['daily_deli_vol_m3'].sum() / 2), 6)
     #
     # # 计算累计比例
     # pltWt_class_pt['daily_stock_qty_cumu%'] = pltWt_class_pt['daily_stock_qty%'].cumsum()
@@ -2737,7 +2737,7 @@ def calu_stock_data(original, config=None):
     #
     # # 计算字段
     # pltWt_class_pt['qty_turnover_days'] = pltWt_class_pt['daily_stock_qty'] / pltWt_class_pt['daily_deli_qty']
-    # pltWt_class_pt['vol_turnover_days'] = pltWt_class_pt['daily_stock_vol_m'] / pltWt_class_pt['daily_deli_vol_m']
+    # pltWt_class_pt['vol_turnover_days'] = pltWt_class_pt['daily_stock_vol_m3'] / pltWt_class_pt['daily_deli_vol_m3']
     #
     # # pprint.pprint(pltWt_class_pt)
     #
@@ -2746,17 +2746,17 @@ def calu_stock_data(original, config=None):
     # '''
     # toteWt_class_df = df.loc[(df['sku_state'] == '良品'),
     #                          ['SKU_ID', 'toteWt_class',
-    #                           'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m', 'daily_stock_weight',
-    #                           'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']]
+    #                           'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3', 'daily_stock_weight',
+    #                           'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3']]
     #
     # toteWt_tmp1 = pd.pivot_table(toteWt_class_df, index='toteWt_class', values='SKU_ID', aggfunc='count',
     #                              fill_value=0,
     #                              margins=True).reset_index()
     #
     # toteWt_tmp2 = pd.pivot_table(toteWt_class_df, index='toteWt_class',
-    #                              values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    #                              values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     #                                      'daily_stock_weight',
-    #                                      'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m'],
+    #                                      'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3'],
     #                              aggfunc='sum', fill_value=0,
     #                              margins=True).reset_index()
     #
@@ -2764,8 +2764,8 @@ def calu_stock_data(original, config=None):
     #
     # # 重排列
     # toteWt_class_pt = toteWt_class_pt[
-    #     ['toteWt_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
-    #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']]
+    #     ['toteWt_class', 'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
+    #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3']]
     #
     # # 更新汇总数据
     # toteWt_class_pt.loc[(toteWt_class_pt['toteWt_class'] == 'All'), ['daily_stock_sku']] = \
@@ -2773,8 +2773,8 @@ def calu_stock_data(original, config=None):
     # toteWt_class_pt.loc[(toteWt_class_pt['toteWt_class'] == 'All'), ['daily_stock_qty']] = \
     #     palletWt_class_df['daily_stock_qty'].sum()
     # toteWt_class_pt.loc[
-    #     (toteWt_class_pt['toteWt_class'] == 'All'), ['daily_stock_vol_m']] = palletWt_class_df[
-    #     'daily_stock_vol_m'].sum()
+    #     (toteWt_class_pt['toteWt_class'] == 'All'), ['daily_stock_vol_m3']] = palletWt_class_df[
+    #     'daily_stock_vol_m3'].sum()
     # toteWt_class_pt.loc[
     #     (toteWt_class_pt['toteWt_class'] == 'All'), ['daily_stock_weight']] = palletWt_class_df[
     #     'daily_stock_weight'].sum()
@@ -2786,8 +2786,8 @@ def calu_stock_data(original, config=None):
     # toteWt_class_pt.loc[(toteWt_class_pt['toteWt_class'] == 'All'), ['daily_deli_qty']] = \
     #     palletWt_class_df['daily_deli_qty'].sum()
     # toteWt_class_pt.loc[
-    #     (toteWt_class_pt['toteWt_class'] == 'All'), ['daily_deli_vol_m']] = palletWt_class_df[
-    #     'daily_deli_vol_m'].sum()
+    #     (toteWt_class_pt['toteWt_class'] == 'All'), ['daily_deli_vol_m3']] = palletWt_class_df[
+    #     'daily_deli_vol_m3'].sum()
     #
     # # 计算比例
     # toteWt_class_pt['SKU_ID%'] = round(
@@ -2795,14 +2795,14 @@ def calu_stock_data(original, config=None):
     # toteWt_class_pt['daily_stock_qty%'] = round(
     #     toteWt_class_pt['daily_stock_qty'] / (toteWt_class_pt['daily_stock_qty'].sum() / 2), 6)
     # toteWt_class_pt['daily_stock_vol_m%'] = round(
-    #     toteWt_class_pt['daily_stock_vol_m'] / (toteWt_class_pt['daily_stock_vol_m'].sum() / 2), 6)
+    #     toteWt_class_pt['daily_stock_vol_m3'] / (toteWt_class_pt['daily_stock_vol_m3'].sum() / 2), 6)
     # toteWt_class_pt['daily_stock_weight%'] = round(
     #     toteWt_class_pt['daily_stock_weight'] / (toteWt_class_pt['daily_stock_weight'].sum() / 2),
     #     6)
     # toteWt_class_pt['daily_deli_qty%'] = round(
     #     toteWt_class_pt['daily_deli_qty'] / (toteWt_class_pt['daily_deli_qty'].sum() / 2), 6)
     # toteWt_class_pt['daily_deli_vol_m%'] = round(
-    #     toteWt_class_pt['daily_deli_vol_m'] / (toteWt_class_pt['daily_deli_vol_m'].sum() / 2), 6)
+    #     toteWt_class_pt['daily_deli_vol_m3'] / (toteWt_class_pt['daily_deli_vol_m3'].sum() / 2), 6)
     #
     # # 计算累计比例
     # toteWt_class_pt['daily_stock_qty_cumu%'] = toteWt_class_pt['daily_stock_qty%'].cumsum()
@@ -2833,7 +2833,7 @@ def calu_stock_data(original, config=None):
     #
     # # 计算字段
     # toteWt_class_pt['qty_turnover_days'] = toteWt_class_pt['daily_stock_qty'] / toteWt_class_pt['daily_deli_qty']
-    # toteWt_class_pt['vol_turnover_days'] = toteWt_class_pt['daily_stock_vol_m'] / toteWt_class_pt['daily_deli_vol_m']
+    # toteWt_class_pt['vol_turnover_days'] = toteWt_class_pt['daily_stock_vol_m3'] / toteWt_class_pt['daily_deli_vol_m3']
 
     # d = toteWt_class_pt[['toteWt_class','daily_stock_qty%','daily_stock_vol_m%' ]].hist().get_figure()
     #
@@ -2854,9 +2854,9 @@ def calu_stock_data(original, config=None):
     # #                 ['SKU_ID', 'current_stock_mode', 'current_stock_equipment', 'current_stock_equiSize',
     # #                  'current_shelfD300_num', 'current_shelfD500_num', 'current_shelfD600_num',
     # #                  'current_shuttle_num', 'current_pltStockN', 'current_pltPickN',
-    # #                  'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    # #                  'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     # #                  'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku',
-    # #                  'daily_deli_qty', 'daily_deli_vol_m'
+    # #                  'daily_deli_qty', 'daily_deli_vol_m3'
     # #                  ]]
     # #
     # # equ_tmp1 = pd.pivot_table(equ_df, index=['current_stock_mode', 'current_stock_equipment', 'current_stock_equiSize'],
@@ -2865,9 +2865,9 @@ def calu_stock_data(original, config=None):
     # #                           margins=True).reset_index()
     # #
     # # equ_tmp2 = pd.pivot_table(equ_df, index=['current_stock_mode', 'current_stock_equipment', 'current_stock_equiSize'],
-    # #                           values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
+    # #                           values=['daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
     # #                                   'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku',
-    # #                                   'daily_deli_qty', 'daily_deli_vol_m'],
+    # #                                   'daily_deli_qty', 'daily_deli_vol_m3'],
     # #                           aggfunc='sum', fill_value=0,
     # #                           margins=True).reset_index()
     # #
@@ -2876,8 +2876,8 @@ def calu_stock_data(original, config=None):
     # # # 重排列
     # # current_stockEquClass = current_stockEquClass[
     # #     ['current_stock_mode', 'current_stock_equipment', 'current_stock_equiSize',
-    # #      'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m',
-    # #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m']]
+    # #      'SKU_ID', 'daily_stock_sku', 'daily_stock_qty', 'daily_stock_vol_m3',
+    # #      'daily_stock_weight', 'daily_stock_pltN', 'daily_deli_sku', 'daily_deli_qty', 'daily_deli_vol_m3']]
     # #
     # # # 计算比例
     # # current_stockEquClass['SKU_ID%'] = round(
@@ -2885,20 +2885,20 @@ def calu_stock_data(original, config=None):
     # # current_stockEquClass['daily_stock_qty%'] = round(
     # #     current_stockEquClass['daily_stock_qty'] / (current_stockEquClass['daily_stock_qty'].sum() / 2), 6)
     # # current_stockEquClass['daily_stock_vol_m%'] = round(
-    # #     current_stockEquClass['daily_stock_vol_m'] / (current_stockEquClass['daily_stock_vol_m'].sum() / 2), 6)
+    # #     current_stockEquClass['daily_stock_vol_m3'] / (current_stockEquClass['daily_stock_vol_m3'].sum() / 2), 6)
     # # current_stockEquClass['daily_stock_weight%'] = round(
     # #     current_stockEquClass['daily_stock_weight'] / (current_stockEquClass['daily_stock_weight'].sum() / 2),
     # #     6)
     # # current_stockEquClass['daily_deli_qty%'] = round(
     # #     current_stockEquClass['daily_deli_qty'] / (current_stockEquClass['daily_deli_qty'].sum() / 2), 6)
     # # current_stockEquClass['daily_deli_vol_m%'] = round(
-    # #     current_stockEquClass['daily_deli_vol_m'] / (current_stockEquClass['daily_deli_vol_m'].sum() / 2), 6)
+    # #     current_stockEquClass['daily_deli_vol_m3'] / (current_stockEquClass['daily_deli_vol_m3'].sum() / 2), 6)
     # #
     # # # 计算周转天数
     # # current_stockEquClass['qty_turnover_days'] = current_stockEquClass['daily_stock_qty'] / current_stockEquClass[
     # #     'daily_deli_qty']
-    # # current_stockEquClass['vol_turnover_days'] = current_stockEquClass['daily_stock_vol_m'] / current_stockEquClass[
-    # #     'daily_deli_vol_m']
+    # # current_stockEquClass['vol_turnover_days'] = current_stockEquClass['daily_stock_vol_m3'] / current_stockEquClass[
+    # #     'daily_deli_vol_m3']
     # #
     # # print('-' * 50)
     # # pprint.pprint(current_stockEquClass)
@@ -2954,24 +2954,24 @@ def calu_stock_data(original, config=None):
     #                      ['SKU_ID', 'design_stock_mode', 'design_stock_equipment', 'design_stock_equiSize',
     #                       'design_shelfD300_num', 'design_shelfD500_num', 'design_shelfD600_num',
     #                       'design_shuttle_num', 'design_pltStockN', 'design_pltPickN',
-    #                       'design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m',
+    #                       'design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m3',
     #                       'design_daily_stock_pltN',
-    #                       'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m',
-    #                       'design_stockQty', 'design_pickQty','design_stockVol_m','design_pickVol_m'
+    #                       'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m3',
+    #                       'design_stockQty', 'design_pickQty','design_stockvol_m3','design_pickvol_m3'
     #                       ]]
     # idx = ['design_stock_mode', 'design_stock_equipment', 'design_stock_equiSize']
     # pt_col = ['design_daily_stock_sku', 'design_daily_stock_qty',
     #            'design_shelfD300_num', 'design_shelfD500_num', 'design_shelfD600_num',
     #            'design_shuttle_num', 'design_pltStockN', 'design_pltPickN',
-    #            'design_stockQty', 'design_pickQty','design_stockVol_m','design_pickVol_m']
+    #            'design_stockQty', 'design_pickQty','design_stockvol_m3','design_pickvol_m3']
     #
     #
     # # idx = ['design_stock_mode', 'design_stock_equipment', 'design_stock_equiSize']
-    # # pt_col = ['design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m',
-    # #          'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m']
+    # # pt_col = ['design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m3',
+    # #          'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m3']
     # # all_col = ['design_stock_mode', 'design_stock_equipment', 'design_stock_equiSize',
-    # #     'design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m',
-    # #     'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m']
+    # #     'design_daily_stock_sku', 'design_daily_stock_qty', 'design_daily_stock_vol_m3',
+    # #     'design_daily_deli_sku', 'design_daily_deli_qty', 'design_daily_deli_vol_m3']
     # desi_equNum = pd.pivot_table(desi_equ_df,
     #                              index=idx,
     #                              values=pt_col,
@@ -2988,10 +2988,10 @@ def calu_stock_data(original, config=None):
     # pt_col2 = ['design_daily_stock_sku', 'design_daily_stock_qty',
     #            'design_shelfD300_num', 'design_shelfD500_num', 'design_shelfD600_num',
     #            'design_shuttle_num', 'design_pltStockN', 'design_pltPickN',
-    #            'design_stockQty', 'design_pickQty', 'design_stockVol_m', 'design_pickVol_m',
+    #            'design_stockQty', 'design_pickQty', 'design_stockvol_m3', 'design_pickvol_m3',
     #            'design_pltStockN', 'design_pltPickN']
     #
-    # df['design_stockVol_m']
+    # df['design_stockvol_m3']
 
     sku_pc_class = df[['SKU_ID', 'sku_name', 'daily_stock_PC_class', 'daily_deli_PC_class']]
 

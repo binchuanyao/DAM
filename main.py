@@ -7,10 +7,10 @@ from outbound_model import *
 
 
 # Press the green button in the gutter to run the script.
-def run(data_path, org_path, result_path, outbound_path=None, outResult_path=None):
+def run(stock_orgData, output_path, outboundOrg_path=None, isValidFile=False):
     time1 = datetime.now()
     print('-' * 20 + '导入数据' + '-' * 20)
-    org = load_data(data_path)
+    org = load_data(stock_orgData)
     time2 = datetime.now()
     print('数据导入时间：', (time2 - time1).seconds, ' S')
 
@@ -25,30 +25,32 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     ### -------------------------------------------------------------------------------
     wriTime1 = datetime.now()
     str_writime = wriTime1.strftime('%Y_%m_%d_%H_%M')
-    writer = pd.ExcelWriter('{}stockClass1_{}.xlsx'.format(org_path, str_writime))
-    df.to_excel(excel_writer=writer, sheet_name='OriginalData', float_format='%.4f')
-    outBound_ref.to_excel(excel_writer=writer, sheet_name='outBound_ref')
+    writer = pd.ExcelWriter('{}stockClass1_{}.xlsx'.format(output_path, str_writime))
 
-    # I_class_data.to_excel(excel_writer=writer, sheet_name='I_class_data')
-    # II_class_data.to_excel(excel_writer=writer, sheet_name='II_class_data')
-    # III_class_data.to_excel(excel_writer=writer, sheet_name='III_class_data')
+    # df.to_excel(excel_writer=writer, sheet_name='OriginalData', float_format='%.4f')
+    # outBound_ref.to_excel(excel_writer=writer, sheet_name='outBound_ref')
     # IV_class_data.to_excel(excel_writer=writer, sheet_name='IV_class_data')
-    IV_class_data.to_excel(excel_writer=writer, sheet_name='IV_class_data')
-    sku_pc_class.to_excel(excel_writer=writer, sheet_name='sku_pc_class')
+    # sku_pc_class.to_excel(excel_writer=writer, sheet_name='sku_pc_class')
+
+    format_data(writer, df=df, sheet_name='00-outBound')
+    format_data(writer, df=outBound_ref, sheet_name='01-outBound_ref')
+    format_data(writer, df=IV_class_data, sheet_name='02-IV_class_data')
+    format_data(writer, df=sku_pc_class, sheet_name='03-sku_pc_class')
 
     ### 平均托盘件数
 
-    tmp1 = pd.pivot_table(df, index=['IV_class'],
-                          values=['SKU_ID'], aggfunc='count',
-                          fill_value=0,
-                          margins=True).reset_index()
-
-    tmp2 = pd.pivot_table(df, index=['IV_class'],
-                          values=['pltQty', 'fullCaseUnit'], aggfunc='mean',
-                          fill_value=0,
-                          margins=True).reset_index()
-    avg_pltQty = pd.merge(tmp1, tmp2, how='left', sort=False)
-    avg_pltQty.to_excel(excel_writer=writer, sheet_name='avg_pltQty')
+    # tmp1 = pd.pivot_table(df, index=['IV_class'],
+    #                       values=['SKU_ID'], aggfunc='count',
+    #                       fill_value=0,
+    #                       margins=True).reset_index()
+    #
+    # tmp2 = pd.pivot_table(df, index=['IV_class'],
+    #                       values=['pltQty', 'fullCaseUnit'], aggfunc='mean',
+    #                       fill_value=0,
+    #                       margins=True).reset_index()
+    # avg_pltQty = pd.merge(tmp1, tmp2, how='left', sort=False)
+    # # avg_pltQty.to_excel(excel_writer=writer, sheet_name='avg_pltQty')
+    # format_data(writer, df=avg_pltQty, sheet_name='04-avg_pltQty')
 
     writer.save()
     writer.close()
@@ -63,7 +65,11 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     ### -------------------------------------------------------------------------------
     pt1 = datetime.now()
 
-    generate_pivot_table(df, outFileName=result_path)
+    if isValidFile:
+        gene_stock_valid_pivot(df, output_path=output_path)
+    else:
+        gene_stock_pivot(df, output_path=output_path)
+
     pt2 = datetime.now()
     print('-' * 50)
     print('库存分析字段计算及文件写入时间：', (pt2 - pt1).seconds, ' S')
@@ -71,11 +77,11 @@ def run(data_path, org_path, result_path, outbound_path=None, outResult_path=Non
     ### -------------------------------------------------------------------------------
     # 调用出库模型
     outTime1 = datetime.now()
-    if outbound_path is not None and outResult_path is not None:
-        outbound_org = load_outbound(outbound_path)
+    if outboundOrg_path is not None:
+        outbound_org = load_outbound(outboundOrg_path)
         outTime2 = datetime.now()
         print('出库数据导入时间：', (outTime2 - outTime1).seconds, ' S')
-        outbound(outBound_ref, outbound_org, outResult_path)
+        outbound(outBound_ref, outbound_org, output_path, isValidFile=isValidFile)
 
         outTime3 = datetime.now()
         print('出库分析字段计算时间&文件写入时间：', (outTime3 - outTime2).seconds, ' S')
@@ -122,6 +128,10 @@ if __name__ == '__main__':
     startTime = datetime.now()
     print('-' * 20 + '程序开始' + '-' * 20 + '')
 
+    project_name = 'msf'
+    data_path = 'D:/Work/Project/09蜜思肤/msf_data/'
+    output_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+
     # stock_file1 = 'D:/Project/亿格/YG/jy_original.xlsx'
     # stock_file2 = 'D:/Project/亿格/YG/ly_original.xlsx'
     # org_path1 = 'D:/Project/亿格/YG/output/jy_org.xlsx'
@@ -137,16 +147,19 @@ if __name__ == '__main__':
     # result_fileName3 = 'D:/Project/亿格/YG/output/all_result.xlsx'
     # run(stock_file3, org_path3, result_fileName3)
 
-    stock_file = 'D:/Work/Project/09蜜思肤/msf_data/msf_original.xlsx'
-    outbound_file = 'D:/Work/Project/09蜜思肤/msf_data/msf_outbound_original.xlsx'
+    stock_orgData_file = '{}msf_original.xlsx'.format(data_path)
+    outbound_orgData_file = '{}msf_outbound_original.xlsx'.format(data_path)
 
-    org_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
-    result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
-    out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+    # org_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+    # result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
+    # out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
 
-    # run(stock_file, org_path, result_path)
+    ### 只保存可用结果的文件名
+    stock_valid = 'D:/Work/Project/09蜜思肤/msf_data/msf_stock_valid.xlsx'
 
-    run(stock_file, org_path, result_path, outbound_path=outbound_file, outResult_path=out_result_path)
+    # run(stock_file, stockOrg_path, stockResult_path)
+
+    run(stock_orgData_file, output_path, outboundOrg_path=outbound_orgData_file, isValidFile=True)
 
     # gene_factor(stock_file)
 

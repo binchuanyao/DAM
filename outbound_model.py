@@ -4,7 +4,7 @@
 from generate_pivot import *
 
 
-def outbound(sku_ref, outbound_org, result_path):
+def outbound(sku_ref, outbound_org, result_path, isValidFile=False):
     # 加载配置参数
     config = Config()
     config.run()
@@ -240,7 +240,7 @@ def outbound(sku_ref, outbound_org, result_path):
     ### 整箱订购order维度基础信息 order_ZS_tag(整箱/散件标签) line_PCB_tag(行PCB标签）
     ### 新建df_z,选取整箱订购行，添加 order_sku_tag 标签
     # z_cols = ['orderID', 'SKU_ID','pltN', 'pltQ', 'ctnN', 'ctnQ', 'VOL']
-    df_z = df[(df['pltQ'] > 0) | (df['ctnQ'] > 0)].copy().reset_index()
+    df_z = df[(df['pltQ'] > 0) | (df['ctnQ'] > 0)].copy().reset_index(drop=True)
     df_z['total_qty'] = df_z['pltQ'] + df_z['ctnQ']
     df_z[['pieceQ', 'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder']] = 0
     df_z['order_ZS_tag'] = 'Z'
@@ -293,7 +293,7 @@ def outbound(sku_ref, outbound_org, result_path):
     ### 新建df_s,选取散件订购行，添加 order_sku_tag 标签
     # s_cols = ['orderID', 'SKU_ID', 'pieceQ', 'VOL',
     #           'piece2ctnN', 'piece2ctn_qty', 'piece2ctn_remainder', 'ctn2pltN']
-    df_s = df[(df['pieceQ'] > 0)].copy().reset_index()
+    df_s = df[(df['pieceQ'] > 0)].copy().reset_index(drop=True)
     df_s['total_qty'] = df_s['pieceQ']
     df_s[['pltN', 'pltQ', 'ctnN', 'ctnQ']] = 0
     df_s['order_ZS_tag'] = 'S'
@@ -529,7 +529,7 @@ def outbound(sku_ref, outbound_org, result_path):
 
     ### --------------------------------------------------------------------------------
     ### 将整箱/散件行组合
-    df_zs = df_z.append(df_s).copy().reset_index()
+    df_zs = df_z.append(df_s).copy().reset_index(drop=True)
     # print('df_zs rows: ' , df_zs.shape)
     # print('df_zs columns: ', df_zs.columns)
 
@@ -577,78 +577,82 @@ def outbound(sku_ref, outbound_org, result_path):
     # 将计算结果写入文件
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
-    writer = pd.ExcelWriter('{}outBound1_{}.xlsx'.format(result_path, str_time))
-    # df.to_excel(excel_writer=writer, sheet_name='00-outBound', inf_rep='')
-    # df_zs.to_excel(excel_writer=writer, sheet_name='00-outBound_zs', inf_rep='')
-    # order_detail.to_excel(excel_writer=writer, sheet_name='01-order_detail', inf_rep='')
+    writer = pd.ExcelWriter('{}outbound1_{}.xlsx'.format(result_path, str_time))
 
     ## 计算SKU维度信息
     sku_detail = pd.merge(sku_detail, df[['SKU_ID', 'pltQty', 'fullCaseUnit']])
 
-    # sku_detail.to_excel(excel_writer=writer, sheet_name='02-sku_detail', inf_rep='')
-
-    format_data(writer, df=df, sheet_name='00-outBound')
-    format_data(writer, df=df_zs, sheet_name='00-outBound_zs')
-    format_data(writer, df=order_detail, sheet_name='01-order_detail')
-    format_data(writer, df=sku_detail, sheet_name='02-sku_detail')
+    format_data(writer, df=df, sheet_name='00-outbound')
+    format_data(writer, df=df_zs, sheet_name='01-outbound_zs')
+    format_data(writer, df=order_detail, sheet_name='02-order_detail')
+    format_data(writer, df=sku_detail, sheet_name='03-sku_detail')
 
     writer.close()
     writer.save()
 
+    ### 料箱体积
+    toteV = config.TOTE['valid_vol']
+
+    if isValidFile:
+        gene_outbound_valid_pivot(df, df_zs, df_z, df_s, toteV, result_path)
+    else:
+        gene_outbound_pivot(df, df_zs, df_z, df_s, toteV, result_path)
+
+
+def gene_outbound_pivot(df, df_zs, df_z, df_s, toteV, result_path):
     ### -----------------------------------------------------------------------------------
     # 提取透视表,写入单独文件
     time = datetime.now()
     str_time = time.strftime('%Y_%m_%d_%H_%M')
-    writer = pd.ExcelWriter('{}outBound2_{}.xlsx'.format(result_path, str_time))
+    writer = pd.ExcelWriter('{}outbound2_{}.xlsx'.format(result_path, str_time))
 
     ## 00. order and sku维度整托件数，整箱数，散件数折算
-
     res = out_sku_qtyCtnPlt(df)
-    res.to_excel(excel_writer=writer, sheet_name='00-order_sku_qtyClass', inf_rep='')
+    format_data(writer=writer, df=res, sheet_name='00-order_sku_qtyClass', isTrans=True)
 
     idx00 = ['order_ZS_tag', 'line_PCB_tag']
     res = out_zs_qty(df_zs, index=idx00)
-    res.to_excel(excel_writer=writer, sheet_name='00-ZS_PCB', inf_rep='')
+    format_data(writer=writer, df=res, index=idx00, sheet_name='00-ZS_PCB', isTrans=True)
 
-    idx001 = ['ABC_MPDV', 'order_ZS_tag']
-    res = out_zs_qty(df_zs, index=idx001)
-    res.to_excel(excel_writer=writer, sheet_name='00-ABC_MPDV(zs)', inf_rep='')
+    idx01 = ['ABC_MPDV', 'order_ZS_tag']
+    res = out_zs_qty(df_zs, index=idx01)
+    format_data(writer=writer, df=res, index=idx01, sheet_name='01-ABC_MPDV(zs)', isTrans=True)
 
     ## 1. sku维度透视表
     idx11 = ['size']
     size = out_sku_pivot(df, index=idx11)
-    size.to_excel(excel_writer=writer, sheet_name='11-size', inf_rep='')
+    format_data(writer=writer, df=size, index=idx11, sheet_name='11-size', isTrans=True)
 
     idx11 = ['ctn_size', 'size']
     size = out_sku_qty_pivot(df, index=idx11)
-    size.to_excel(excel_writer=writer, sheet_name='11-sizeComb', inf_rep='')
+    format_data(writer=writer, df=size, index=idx11, sheet_name='11-ctnSize', isTrans=True)
 
     idx12 = ['size_rele']
     size_rele = out_sku_pivot(df, index=idx12)
-    size_rele.to_excel(excel_writer=writer, sheet_name='12-size_rele', inf_rep='')
+    format_data(writer=writer, df=size_rele, index=idx12, sheet_name='12-size_rele', isTrans=True)
 
     idx13 = ['sku_class']
     # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
     pt = out_sku_qty_pivot(df, index=idx13)
-    pt.to_excel(excel_writer=writer, sheet_name='13-skuClass', inf_rep='')
+    format_data(writer=writer, df=pt, index=idx13, sheet_name='13-skuClass', isTrans=True)
 
     idx14 = ['order_class']
     pt = out_order_qty_pivot(df, index=idx14)
-    pt.to_excel(excel_writer=writer, sheet_name='14-orderClass', inf_rep='')
+    format_data(writer=writer, df=pt, index=idx14, sheet_name='14-orderClass', isTrans=True)
 
     idx15 = ['sku_size_comb']
     # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
     pt = out_sku_qty_pivot(df, index=idx15)
-    pt.to_excel(excel_writer=writer, sheet_name='15-sku_size_comb', inf_rep='')
+    format_data(writer=writer, df=pt, index=idx15, sheet_name='15-sku_size_comb', isTrans=True)
 
     idx16 = ['EIV_class']
     # cols = ['pltN', 'ctnN', 'pltQ', 'ctnQ', 'pieceQ', 'total_qty', 'VOL']
     pt = out_sku_qty_pivot(df, index=idx16)
-    pt.to_excel(excel_writer=writer, sheet_name='16-sku_EIV_class', inf_rep='')
+    format_data(writer=writer, df=pt, index=idx16, sheet_name='16-sku_EIV_class', isTrans=True)
 
     idx17 = ['ABC_MPDV', 'order_ZS_tag']
     res = out_sku_qty_pivot(df_zs, index=idx17)
-    res.to_excel(excel_writer=writer, sheet_name='17-ABC_MPDV(zs)', inf_rep='')
+    format_data(writer=writer, df=res, index=idx17, sheet_name='17-ABC_MPDV(zs)', isTrans=True)
 
     """
     ## 2. 订单维度透视表
@@ -656,17 +660,16 @@ def outbound(sku_ref, outbound_org, result_path):
     # 订单结构透视
     idx21 = ['order_structure']
     order_type = out_order_pivot(df, index=idx21)
-    order_type.to_excel(excel_writer=writer, sheet_name='21-order_structure', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx21, sheet_name='21-order_structure', isTrans=True)
 
     # 订单结构-件型关联 透视
     idx22 = ['order_structure', 'size_rele']
     order_releSize = out_order_pivot(df, index=idx22)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='22-order_sizerele', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx22, sheet_name='22-order_sizerele', isTrans=True)
 
     idx23 = ['order_date']
-    toteV = config.TOTE['valid_vol']
     daily_order = order_num(df, toteV=toteV, index=idx23)
-    daily_order.to_excel(excel_writer=writer, sheet_name='23-dailyOrder', inf_rep='')
+    format_data(writer=writer, df=daily_order, index=idx23, sheet_name='23-dailyOrder', isTrans=True)
 
     """
     ## 3. ABC透视表
@@ -674,25 +677,20 @@ def outbound(sku_ref, outbound_org, result_path):
     # DQ-ABC&rele 透视
     idx31 = ['ABC_MPDQ']
     order_type = out_order_pivot(df, index=idx31)
-    order_type.to_excel(excel_writer=writer, sheet_name='31-DQ_ABC', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx31, sheet_name='31-DQ_ABC', isTrans=True)
 
     idx32 = ['DQ_ABC_rele']
     order_type = out_order_pivot(df, index=idx32)
-    order_type.to_excel(excel_writer=writer, sheet_name='32-DQ_ABC_rele', inf_rep='')
-
-    # # DQ-ABC&rele 透视
-    # idx33 = ['ABC_MPDQ', 'DQ-ABC_rele']
-    # order_type = out_order_pivot(df, index=idx33)
-    # order_type.to_excel(excel_writer=writer, sheet_name='32-DQ_ABC&rele', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx32, sheet_name='32-DQ_ABC_rele', isTrans=True)
 
     # DK-ABC 透视
-    idx34 = ['ABC_MPDK']
-    order_releSize = out_order_pivot(df, index=idx34)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='33-DK_ABC', inf_rep='')
+    idx33 = ['ABC_MPDK']
+    order_releSize = out_order_pivot(df, index=idx33)
+    format_data(writer=writer, df=order_releSize, index=idx33, sheet_name='33-DK_ABC', isTrans=True)
 
-    idx35 = ['DK_ABC_rele']
-    order_type = out_order_pivot(df, index=idx35)
-    order_type.to_excel(excel_writer=writer, sheet_name='34-DK_ABC_rele', inf_rep='')
+    idx34 = ['DK_ABC_rele']
+    order_type = out_order_pivot(df, index=idx34)
+    format_data(writer=writer, df=order_type, index=idx34, sheet_name='34-DK_ABC_rele', isTrans=True)
 
     # # DK-ABC&rele 透视
     # idx36 = ['ABC_MPDK', 'DK-ABC_rele']
@@ -705,41 +703,41 @@ def outbound(sku_ref, outbound_org, result_path):
     # EQ_class 透视
     idx41 = ['EQ_class']
     order_type = out_order_pivot(df, index=idx41)
-    order_type.to_excel(excel_writer=writer, sheet_name='41-EQ_class', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx41, sheet_name='41-EQ_class', isTrans=True)
 
     idx411 = ['EQ_class_Z']
     order_type = out_order_pivot(df_z, index=idx411)
-    order_type.to_excel(excel_writer=writer, sheet_name='41.1-EQ_class_Z', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx411, sheet_name='41.1-EQ_class_Z', isTrans=True)
 
     idx412 = ['EQ_class_S']
     order_type = out_order_pivot(df_s, index=idx412)
-    order_type.to_excel(excel_writer=writer, sheet_name='41.2-EQ_class_S', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx412, sheet_name='41.2-EQ_class_S', isTrans=True)
 
     # EK_class 透视
     idx42 = ['EN_class']
     order_type = out_order_pivot(df, index=idx42)
-    order_type.to_excel(excel_writer=writer, sheet_name='42-EN_class', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx42, sheet_name='42-EN_class', isTrans=True)
 
     idx421 = ['EN_class_Z']
     order_type = out_order_pivot(df_z, index=idx421)
-    order_type.to_excel(excel_writer=writer, sheet_name='42.1-EN_class_Z', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx421, sheet_name='42.1-EN_class_Z', isTrans=True)
 
     idx422 = ['EN_class_S']
     order_type = out_order_pivot(df_s, index=idx422)
-    order_type.to_excel(excel_writer=writer, sheet_name='42.2-EN_class_S', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx422, sheet_name='42.2-EN_class_S', isTrans=True)
 
     # EK_class 透视
     idx43 = ['EV_class']
     order_type = out_order_pivot(df, index=idx43)
-    order_type.to_excel(excel_writer=writer, sheet_name='43-EV_class', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx43, sheet_name='43-EV_class', isTrans=True)
 
     idx431 = ['EV_class_Z']
     order_type = out_order_pivot(df_z, index=idx431)
-    order_type.to_excel(excel_writer=writer, sheet_name='43.1-EV_class_Z', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx431, sheet_name='43.1-EV_class_Z', isTrans=True)
 
     idx432 = ['EV_class_S']
     order_type = out_order_pivot(df_s, index=idx432)
-    order_type.to_excel(excel_writer=writer, sheet_name='43.2-EV_class_S', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx432, sheet_name='43.2-EV_class_S', isTrans=True)
 
     # order-structure & EQ 透视
     # idx44 = ['order_structure', 'EQ_class']
@@ -770,11 +768,12 @@ def outbound(sku_ref, outbound_org, result_path):
 
     idx44 = ['EV_class', 'order_ZS_tag', 'EQ_class_all', 'EN_class_all']
     res = out_order_pivot(df_zs, index=idx44)
-    res.to_excel(excel_writer=writer, sheet_name='44-EV_EQ_EN', inf_rep='')
+    format_data(writer=writer, df=res, index=idx44, sheet_name='44-EV_EQ_EN', isTrans=True)
 
     idx45 = ['EV_class', 'order_ZS_tag', 'EIV_class_zs']
     res = out_order_pivot(df_zs, index=idx45)
-    res.to_excel(excel_writer=writer, sheet_name='45-EV_EIV(zs)', inf_rep='')
+    # res.to_excel(excel_writer=writer, sheet_name='45-EV_EIV(zs)', inf_rep='')
+    format_data(writer=writer, df=res, index=idx45, sheet_name='45-EV_EIV(zs)', isTrans=True)
 
     """
     ## 5. PC透视表
@@ -782,43 +781,96 @@ def outbound(sku_ref, outbound_org, result_path):
     # EQ_class 透视
     idx51 = ['EV_class', 'EIV_class']
     order_type = out_order_pivot(df, index=idx51)
-    order_type.to_excel(excel_writer=writer, sheet_name='51-EV_EIV_class', inf_rep='')
+    # order_type.to_excel(excel_writer=writer, sheet_name='51-EV_EIV_class', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx51, sheet_name='51-EV_EIV_class', isTrans=True)
 
     # EK_class 透视
     idx52 = ['EV_class', 'size_rele']
     order_type = out_order_pivot(df, index=idx52)
-    order_type.to_excel(excel_writer=writer, sheet_name='52-EV&sizerele', inf_rep='')
+    # order_type.to_excel(excel_writer=writer, sheet_name='52-EV&sizeRele', inf_rep='')
+    format_data(writer=writer, df=order_type, index=idx52, sheet_name='52-EV&sizeRele', isTrans=True)
 
     # order-structure & EQ 透视
     idx53 = ['order_structure', 'EV_class']
     order_releSize = out_order_pivot(df, index=idx53)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='53-order&EV', inf_rep='')
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='53-order&EV', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx53, sheet_name='53-order&EV', isTrans=True)
 
     # order-structure & EN 透视
     idx54 = ['DIV_class']
     order_releSize = out_order_pivot(df, index=idx54)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='54-DIV', inf_rep='')
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='54-DIV', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx54, sheet_name='54-DIV', isTrans=True)
 
     # size & order-structure & EQ 透视
     idx55 = ['size', 'DIV_class']
     order_releSize = out_order_pivot(df, index=idx55)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='55-size&DIV', inf_rep='')
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='55-size&DIV', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx55, sheet_name='55-size&DIV', isTrans=True)
 
     # size & order-structure & EQ 透视
     idx56 = ['order_structure', 'DIV_class']
     order_releSize = out_order_pivot(df, index=idx56)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='56-order&DIV', inf_rep='')
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='56-order&DIV', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx56, sheet_name='56-order&DIV', isTrans=True)
 
     idx57 = ['EQ_class', 'DIV_class']
     order_releSize = out_order_pivot(df, index=idx57)
-    order_releSize.to_excel(excel_writer=writer, sheet_name='57-EQ&DIV', inf_rep='')
+    # order_releSize.to_excel(excel_writer=writer, sheet_name='57-EQ&DIV', inf_rep='')
+    format_data(writer=writer, df=order_releSize, index=idx57, sheet_name='57-EQ&DIV', isTrans=True)
 
     # order-structure & EN 透视
     idx58 = ['EIV_class']
     res = out_order_pivot(df, index=idx58)
-    res.to_excel(excel_writer=writer, sheet_name='58-EIV', inf_rep='')
-
-    layout_format(writer)
+    # res.to_excel(excel_writer=writer, sheet_name='58-EIV', inf_rep='')
+    format_data(writer=writer, df=res, index=idx58, sheet_name='58-EIV', isTrans=True)
 
     writer.save()
     writer.close()
+
+
+def gene_outbound_valid_pivot(df, df_zs, df_z, df_s, toteV, result_path):
+    time = datetime.now()
+    str_time = time.strftime('%Y_%m_%d_%H_%M')
+
+    s_n = 1
+    valid_writer = pd.ExcelWriter('{}outbound_valid_{}.xlsx'.format(result_path, str_time))
+
+    idx23 = ['order_date']
+    daily_order = order_num(df, toteV=toteV, index=idx23)
+    format_data(writer=valid_writer, df=daily_order, index=idx23, sheet_name='{}-日均订单'.format(s_n), isTrans=True)
+    s_n += 1
+
+    # 订单结构透视
+    idx21 = ['order_structure']
+    order_type = out_order_pivot(df, index=idx21)
+    format_data(writer=valid_writer, df=order_type, index=idx21, sheet_name='{}-订单结构'.format(s_n), isTrans=True)
+    s_n += 1
+
+    idx00 = ['order_ZS_tag', 'line_PCB_tag']
+    res = out_zs_qty(df_zs, index=idx00)
+    format_data(writer=valid_writer, df=res, index=idx00, sheet_name='{}-ZS_PCB'.format(s_n), isTrans=True)
+    s_n += 1
+
+    idx11 = ['ctn_size', 'size']
+    size = out_sku_qty_pivot(df, index=idx11)
+    format_data(writer=valid_writer, df=size, index=idx11, sheet_name='{}-ctnSize'.format(s_n), isTrans=True)
+    s_n += 1
+
+    idx41 = ['EQ_class']
+    order_type = out_order_pivot(df, index=idx41)
+    format_data(writer=valid_writer, df=order_type, index=idx41, sheet_name='{}-EQ'.format(s_n), isTrans=True)
+    s_n += 1
+
+    idx42 = ['EN_class']
+    order_type = out_order_pivot(df, index=idx42)
+    format_data(writer=valid_writer, df=order_type, index=idx41, sheet_name='{}-EN'.format(s_n), isTrans=True)
+    s_n += 1
+
+    idx43 = ['EV_class']
+    order_type = out_order_pivot(df, index=idx43)
+    format_data(writer=valid_writer, df=order_type, index=idx41, sheet_name='{}-EV'.format(s_n), isTrans=True)
+    s_n += 1
+
+    valid_writer.save()
+    valid_writer.close()
