@@ -1605,7 +1605,7 @@ def format_data(writer, df, sheet_name, index=None, isTrans=False):
     for col in list(df.columns):
         if 'cumu' in col:
             df.loc[(df[df.columns[0]] == 'All'), [col]] = ''
-        df.loc[(df[col] == 'inf'), [col]] = ''
+        # df.loc[(df[col] == 'inf'), [col]] = ''
 
     # 设置格式
     fmt = workbook.add_format({'font_name': 'Microsoft YaHei Light', 'font_size': 9,
@@ -1625,7 +1625,8 @@ def format_data(writer, df, sheet_name, index=None, isTrans=False):
     df.index.name = '序号'
 
     ### df写入表格
-    df.to_excel(excel_writer=writer, sheet_name=sheet_name, encoding='utf8', startcol=0, startrow=0)
+    df.to_excel(excel_writer=writer, sheet_name=sheet_name, encoding='utf8',
+                startcol=0, startrow=0, na_rep='', inf_rep='')
     worksheet1 = writer.sheets[sheet_name]
 
     ### 数据源行数，和列数
@@ -1660,7 +1661,7 @@ def format_data(writer, df, sheet_name, index=None, isTrans=False):
             if '%' in col:
                 # print(col, '百分数')
                 worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
-                                              {'type': 'cell', 'criteria': '<=', 'value': 1, 'format': percent_fmt})
+                                              {'type': 'cell', 'criteria': '<', 'value': 1.5, 'format': percent_fmt})
             elif 'vol' in col or 'Vol' in col or 'VOL' in col or 'avg_weight' in col:
                 # print(col, '4位小数，千分位')
                 worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),

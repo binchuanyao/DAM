@@ -92,12 +92,6 @@ def calu_stock_data(original, config=None):
     # 显示所有行
     pd.set_option('display.max_rows', None)
 
-    rows = original.shape[0]
-    cols = original.shape[1]
-
-    print('-' * 50)
-    print('原始数据行数：', rows)
-    print('原始数据列数：', cols)
 
     columns = ['static_date', 'SKU_ID', 'sku_name', 'sku_state', 'warehouse',
                'I_class', 'II_class', 'III_class', 'IV_class',
