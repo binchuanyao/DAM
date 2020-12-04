@@ -1661,7 +1661,7 @@ def format_data(writer, df, sheet_name, index=None, isTrans=False):
             if '%' in col:
                 # print(col, '百分数')
                 worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
-                                              {'type': 'cell', 'criteria': '<', 'value': 1.5, 'format': percent_fmt})
+                                              {'type': 'cell', 'criteria': '>', 'value': -0.1, 'format': percent_fmt})
             elif 'vol' in col or 'Vol' in col or 'VOL' in col or 'avg_weight' in col:
                 # print(col, '4位小数，千分位')
                 worksheet1.conditional_format('{}1:{}{}'.format(cap_list[i], cap_list[i], rows),
