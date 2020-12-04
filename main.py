@@ -7,7 +7,16 @@ from outbound_model import *
 
 
 # Press the green button in the gutter to run the script.
-def run(stock_orgData, output_path, outboundOrg_path=None, isValidFile=False):
+def run(stock_orgData, output_path, outbound_orgData=None, isValidFile=False):
+    '''
+    Stock class and outbound analysis model
+    :param stock_orgData: the stock original data
+    :param output_path: the result file path
+    :param outbound_orgData: the outbound original data
+    :param isValidFile: if FALSE output all the pivot of stock and outbound,
+                        if TRUE only output the simple pivot of stock and outbound
+    :return: none
+    '''
     time1 = datetime.now()
     print('-' * 20 + '导入数据' + '-' * 20)
     org = load_data(stock_orgData)
@@ -77,8 +86,8 @@ def run(stock_orgData, output_path, outboundOrg_path=None, isValidFile=False):
     ### -------------------------------------------------------------------------------
     # 调用出库模型
     outTime1 = datetime.now()
-    if outboundOrg_path is not None:
-        outbound_org = load_outbound(outboundOrg_path)
+    if outbound_orgData is not None:
+        outbound_org = load_outbound(outbound_orgData)
         outTime2 = datetime.now()
         print('出库数据导入时间：', (outTime2 - outTime1).seconds, ' S')
         outbound(outBound_ref, outbound_org, output_path, isValidFile=isValidFile)
@@ -88,6 +97,11 @@ def run(stock_orgData, output_path, outboundOrg_path=None, isValidFile=False):
 
 
 def gene_factor(data_path):
+    '''
+    Calculate the storage and pick coefficient under different pallet sizes
+    :param data_path: the stock original data
+    :return: none
+    '''
     ### -------------------------------------------------------------------------------
     org = load_data(data_path)
 
@@ -154,12 +168,10 @@ if __name__ == '__main__':
     # result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
     # out_result_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
 
-    ### 只保存可用结果的文件名
-    stock_valid = 'D:/Work/Project/09蜜思肤/msf_data/msf_stock_valid.xlsx'
 
     # run(stock_file, stockOrg_path, stockResult_path)
 
-    run(stock_orgData_file, output_path, outboundOrg_path=outbound_orgData_file, isValidFile=True)
+    run(stock_orgData_file, output_path, outbound_orgData=outbound_orgData_file, isValidFile=True)
 
     # gene_factor(stock_file)
 
