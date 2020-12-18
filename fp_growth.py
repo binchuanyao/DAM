@@ -82,9 +82,12 @@ def load_test_data():
     return simDat
 
 
-def load_data(file_path):
-    df = pd.read_excel(file_path)
-    df.columns = ['']
+def load_out_data(file_name):
+    df = pd.read_excel(file_name)
+    df.columns = ['warehouse', 'order_date', 'order_week', 'order_state', 'm_orderID',
+                  'orderID', 'isSplit', 'order_type', 'operation_mode', 'SKU_ID', 'total_qty',
+                  'deli_type', 'package_size', 'package_weight', 'package_long', 'package_width',
+                  'package_height', 'package_num', 'province', 'city']
     order_dict = df.groupby('orderID')['SKU_ID'].apply(list).to_dict()
 
     # order_list = df.groupby('orderID')['SKU_ID'].apply(list).to_list()
@@ -92,7 +95,6 @@ def load_data(file_path):
     for v in order_dict.values():
         data.append(v)
     return data
-
 
 # 构造成 element : count 的形式
 def createInitSet(dataSet):
@@ -140,12 +142,67 @@ def mineFPtree(inTree, headerTable, minSup, preFix, freqItemList):
             # myCondTree.disp(1)
             mineFPtree(myCondTree, myHead, minSup, newFreqSet, freqItemList)  # 递归挖掘条件FP树
 
+ # def FpGrowth(database, minSup=3):
+ #        f1, d1 = getFreq(database, minSup)  # 求第一次频繁项集,并返回一个字典存放支持度，且按大到小排序，返回频繁项和存放频繁项支持度的字典
+ #        rootNode = createRootNode()  # 创建根节点
+ #        # print(f1,d1)        #[['a'], ['b'], ['c'], ['d']]      {'a': 4, 'b': 4, 'c': 4, 'd': 3}
+ #
+ #        # 第一步建造树
+ #        buildTree(database, rootNode, f1)
+ #        # indexTableHead = {}     #创建线索的表头，一个链表
+ #        indexTableHead = createIndexTableHead(**d1)  # **d1 就是传了个值，给了它一个拷贝，修改函数里面的这个拷贝，不会影响到外面的这个变量的值
+ #        buildIndex(rootNode, indexTableHead)  # 创建线索，用这个表头
+ #
+ #        # print('构建线索后，前序遍历如下：')
+ #        # FpNode.checkFirstTree(rootNode)
+ #        # print('构建线索后，后序遍历如下：')
+ #        # FpNode.checkBehindTree(rootNode)
+ #
+ #        freAll = []  # 所有频繁项集
+ #        freAllDic = {}  # 所有频繁项集的支持度
+ #
+ #        # 第二步    进行频繁项集的挖掘，从表头header的最后一项开始。
+ #        for commonId in f1[-1::-1]:  # 倒叙 从支持度小的到支持度大的，进行挖掘
+ #            idK = str(commonId[0])
+ #            newDataK = getNewRecord(idK, **indexTableHead)  # 传入这个表头的一个拷贝， 函数返回挖掘出来的新记录
+ #            fk, dk = getFreq(newDataK, minSup)  # 对新数据集求频繁项集
+ #            # print(fk,dk)
+ #            base, itemSup = getAllConditionBase(newDataK, idK, fk, minSup, **dk)  # 得到当前节点的条件频繁模式集，返回
+ #            # 有可能会发生这样一种情况，条件基是 a ，然后fk，dk为空，结果这个函数又返回了 a，那么最后的结果中，就会出现 a，a  这种情况，处理方法请往下看
+ #
+ #            # print(base，idK)
+ #            for i in base:
+ #                # print(i)
+ #                t = list(i)
+ #                t.append(idK)
+ #                t = set(
+ #                    t)  # 为了防止出现 重复 的情况，因为我的getAllConditionBase(newDataK, idK, fk, minSup, **dk)方法的编写，可能会形成重复，如   a，a
+ #                t = list(t)
+ #
+ #                freAll.append(t)
+ #                itemSupValue = list(itemSup.values())[0]
+ #
+ #                x = tuple(t)  # 列表不能做字典的关键字，因为他可变，，而元组可以
+ #                # <class 'list'>: ['c', 'd']
+ #                # print(t[0])     # t是列表，字典的关键字不能是可变的列表， 所以用 t[0] 来取出里面的值
+ #                freAllDic[x] = min(itemSupValue, d1[idK])
+ #        # print(freAll)
+ #        # print(freAllDic)
+ #
+ #        return freAll, freAllDic
 
-if __name__ == '__main__':
+def get_freq():
+    pass
 
-    simDat = load_test_data()
+
+def run_fpGrowth(file_name=None, sup = 3):
+    if file_name is None:
+        simDat = load_test_data()
+    else:
+        simDat = load_out_data(file_name)
     initSet = createInitSet(simDat)
-    myFPtree, myHeaderTab = createFPtree(initSet, 2)
+    print(initSet)
+    myFPtree, myHeaderTab = createFPtree(initSet, sup)
     myFPtree.disp()
 
     freqItems = []

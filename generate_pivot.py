@@ -357,35 +357,35 @@ def gene_stock_valid_pivot(df, output_path):
     str_time = time.strftime('%Y_%m_%d_%H_%M')
     sku = ['SKU_ID']
 
+    # NotZero_df = df[(df['stock_qty_isNonZero'] == 'Y')].copy().reset_index(drop=True)
+
     s_n = 1
-    valid_writer = pd.ExcelWriter('{}stock_valid_{}.xlsx'.format(output_path, str_time))
+    writer = pd.ExcelWriter('{}stock_valid_{}.xlsx'.format(output_path, str_time))
 
     idx12 = ['size']
     pt_col_com = ['daily_stock_sku', 'daily_stock_qty', 'daily_stock_pltN', 'daily_stock_ctnN',
                   'daily_stock_vol_m3', 'daily_stock_weight',
                   'daily_deli_sku', 'daily_deli_qty', 'daily_deli_pltN', 'daily_deli_ctnN',
-                  'daily_deli_vol_m3',
-                  'current_pltStockN', 'current_pltPickN',
-                  'current_stockQty', 'current_pickQty']
-    size = general_class(df, sku=sku, index=idx12, pt_col=pt_col_com, isAvg=True)
-    format_data(writer=valid_writer, df=size, index=idx12, sheet_name='{}-件型'.format(s_n), isTrans=True)
+                  'daily_deli_vol_m3']
+    size = general_class(df, sku=sku, index=idx12, pt_col=pt_col_com, isCumu=True, isAvg=True)
+    format_data(writer=writer, df=size, index=idx12, sheet_name='{}-件型'.format(s_n), isTrans=True)
     s_n += 1
 
     # 原箱件型分级
     idx13 = ['ctn_size', 'size']
-    size = general_class(df, sku=sku, index=idx13, pt_col=pt_col_com, isAvg=True)
-    format_data(writer=valid_writer, df=size, index=idx13, sheet_name='{}-原箱件型'.format(s_n), isTrans=True)
+    size = general_class(df, sku=sku, index=idx13, pt_col=pt_col_com, isCumu=True, isAvg=True)
+    format_data(writer=writer, df=size, index=idx13, sheet_name='{}-原箱件型'.format(s_n), isTrans=True)
     s_n += 1
 
     idx22 = ['pltWt_class_all']
     pltWt_class_all = general_class(df, sku=sku, index=idx22, isCumu=True)
-    format_data(writer=valid_writer, df=pltWt_class_all, index=idx22,
+    format_data(writer=writer, df=pltWt_class_all, index=idx22,
                 sheet_name='{}-托盘载重分级(V&W)'.format(s_n), isTrans=True)
     s_n += 1
 
     idx23 = ['vol_pltWt_class']
     pltWt_class_vol = general_class(df, sku=sku, index=idx23, isCumu=True)
-    format_data(writer=valid_writer, df=pltWt_class_vol, index=idx23,
+    format_data(writer=writer, df=pltWt_class_vol, index=idx23,
                 sheet_name='{}-托盘载重分级(V)'.format(s_n), isTrans=True)
     s_n += 1
 
@@ -396,37 +396,37 @@ def gene_stock_valid_pivot(df, output_path):
                               'daily_deli_vol_m3']]
     idx24 = ['toteWt_class']
     toteWt_class = general_class(toteWt_class_df, sku=sku, index=idx24, isCumu=True)
-    format_data(writer=valid_writer, df=toteWt_class, index=idx24,
+    format_data(writer=writer, df=toteWt_class, index=idx24,
                 sheet_name='{}-料箱载重分级(V&W)'.format(s_n), isTrans=True)
     s_n += 1
 
     idx25 = ['vol_toteWt_class']
     toteWt_class_vol = general_class(toteWt_class_df, sku=sku, index=idx25, isCumu=True)
-    format_data(writer=valid_writer, df=toteWt_class_vol, index=idx25,
+    format_data(writer=writer, df=toteWt_class_vol, index=idx25,
                 sheet_name='{}-料箱载重分级(V)'.format(s_n), isTrans=True)
     s_n += 1
 
     idx33 = ['ABC_MPDQ']
     ABC_MPDQ = abc_class(df, index=idx33)
-    format_data(writer=valid_writer, df=ABC_MPDQ, index=idx33,
+    format_data(writer=writer, df=ABC_MPDQ, index=idx33,
                 sheet_name='{}-ABC_MPDQ'.format(s_n), isTrans=True)
     s_n += 1
 
     # 134 透视_ABC-MADQ_O1
     idx34 = ['ABC_MPDV']
     ABC_MPDV = abc_class(df, index=idx34)
-    format_data(writer=valid_writer, df=ABC_MPDV, index=idx34,
+    format_data(writer=writer, df=ABC_MPDV, index=idx34,
                 sheet_name='{}-ABC_MPDV'.format(s_n), isTrans=True)
     s_n += 1
 
     idx41 = ['daily_stock_PC_class']
     stock_PC_class = pc_class(df, index=idx41, isCumu=True)
-    format_data(writer=valid_writer, df=stock_PC_class, index=idx41,
+    format_data(writer=writer, df=stock_PC_class, index=idx41,
                 sheet_name='{}-库存PC分级'.format(s_n), isTrans=True)
     s_n += 1
 
-    valid_writer.save()
-    valid_writer.close()
+    writer.save()
+    writer.close()
 
 
 def get_stock_factor(df, config, writer):
@@ -548,6 +548,9 @@ def general_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True,
     # if 'VOL' in cols:
     #     result_pt['VOL'] = round(result_pt['VOL'], 2)
     # result_pt[cols] = result_pt[cols].applymap(lambda x: '{:,}'.format(x))
+    index_num = len(index)
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
 
     return result_pt
 
@@ -637,6 +640,8 @@ def abc_class(df, index, sku=None, pt_col=None, isCumu=True, isSimple=True):
     if 'daily_deli_vol_m3' in result_pt.columns:
         result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m3'] / result_pt['daily_deli_vol_m3'], 4)
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -693,6 +698,8 @@ def pc_class(df, index, sku=None, pt_col=None, isCumu=False, isSimple=True):
     if 'daily_deli_vol_m3' in result_pt.columns:
         result_pt['vol_turnover_days'] = round(result_pt['daily_stock_vol_m3'] / result_pt['daily_deli_vol_m3'], 4)
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -881,6 +888,8 @@ def out_sku_pivot(df, index, sku=None, pt_col=None, isCumu=True):
     if 'VOL' in result_pt.columns:
         result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -939,6 +948,8 @@ def out_order_pivot(df, index, order=None, pt_col=None, isCumu=True):
     result_pt['qty_per_line'] = result_pt['total_qty'] / result_pt['line_count']
     result_pt['vol_per_order'] = result_pt['VOL'] / result_pt['order_dist_count']
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -1072,6 +1083,8 @@ def out_sku_qty_pivot(df, index, sku=None, pt_col=None, isCumu=False):
     if 'VOL' in result_pt.columns:
         result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -1241,7 +1254,6 @@ def out_sku_qtyCtnPlt(df, index=None, sku=None):
                                   ((result_pt['pltN'].sum() + result_pt['ctn2pltN'].sum()) / 2)
     # writer.save()
     # writer.close()
-
     return result_pt
 
 
@@ -1316,6 +1328,9 @@ def out_zs_qty(df_zs, index=None, sku=None):
     result_pt['托数%(整托+原箱折算成托)'] = (result_pt['pltN'] + result_pt['ctn2pltN']) / \
                                   ((result_pt['pltN'].sum() + result_pt['ctn2pltN'].sum()) / 2)
 
+    index_num = len(index)
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -1355,6 +1370,9 @@ def order_num(df, index, toteV):
 
     # 重排列
     result_pt = result_pt[index + ['order_N'] + pt_col]
+    index_num = len(index)
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 
@@ -1430,6 +1448,9 @@ def out_order_qty_pivot(df, index, order=None, sku=None, pt_col=None, isCumu=Fal
     if 'VOL' in result_pt.columns:
         result_pt['daily_deli_vol_perSKU'] = result_pt['VOL'] / result_pt['sku_dist_count']
 
+    index_num = len(index)
+    cols = list(result_pt.columns[index_num:])
+    result_pt = data_format(result_pt, cols)
     return result_pt
 
 def trans(columns):

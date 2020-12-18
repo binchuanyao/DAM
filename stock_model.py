@@ -578,7 +578,7 @@ def calu_stock_data(original, config=None):
     df['corrVol'] = df['corrLong'] * df['corrWidth'] * df['corrHeight']
 
     # 56 BE	"每托重量(kg)(按额定体积折算)_含全部修正 corr_vol_pltWt
-    df['corr_vol_pltWt'] = config.PALLET_STOCK['specified_vol'] / df['corrVol'] * df['corrWeight'] + \
+    df['corr_vol_pltWt'] = config.PALLET_STOCK['valid_vol'] / df['corrVol'] * df['corrWeight'] + \
                            config.PALLET_STOCK[
                                'unit_weight']
 
@@ -666,7 +666,7 @@ def calu_stock_data(original, config=None):
     df['ctn_mid_side'] = (df['ctn_long'] + df['ctn_width'] + df['ctn_height']) - \
                          df['ctn_max_side'] - df['ctn_min_side']
 
-    df['size'] = ''  # '4H'
+    df['size'] = np.NAN  # '4H'
     df.loc[(df['corrLongest'] <= config.SIZE['longest'][0]) &
            (df['mid_side'] <= config.SIZE['middle'][0]) &
            (df['corrWeight'] <= config.SIZE['weight'][0]), ['size']] = config.SIZE['type'][0]

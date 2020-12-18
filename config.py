@@ -167,7 +167,7 @@ class Config:
         self.SIZE = {
             'type': ['1S', '2M', '3B', '4H'],
             'ctn_type': ['1CS', '2CM', '3CB', '4CH'],
-            'longest': [400, 600, 1200, 1200],
+            'longest': [300, 600, 1200, 1200],
             'l_measure': ['<=', '<=', '<=', '>'],
             'middle': [300, np.NaN, np.NaN, np.NaN],
             'm_measure': ['<=', np.NaN, np.NaN, np.NaN],

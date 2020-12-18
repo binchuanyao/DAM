@@ -4,6 +4,7 @@ import datetime
 
 from load_data import *
 from outbound_model import *
+from fp_growth import *
 
 
 # Press the green button in the gutter to run the script.
@@ -96,7 +97,7 @@ def run(stock_orgData, output_path, outbound_orgData=None, isValidFile=False):
         print('出库分析字段计算时间&文件写入时间：', (outTime3 - outTime2).seconds, ' S')
 
 
-def gene_factor(data_path):
+def gene_factor(output_path, data_path):
     '''
     Calculate the storage and pick coefficient under different pallet sizes
     :param data_path: the stock original data
@@ -106,9 +107,9 @@ def gene_factor(data_path):
     org = load_data(data_path)
 
     wriTime1 = datetime.now()
-    str_time = wriTime1.strftime('%m_%d')
+    str_time = wriTime1.strftime('%m_%d_%H_%M')
 
-    factor_path = 'D:/Work/Project/09蜜思肤/Output/msf_stock_factor{}.xlsx'.format(str_time)
+    factor_path = '{}stock_factor{}.xlsx'.format(output_path, str_time)
 
     ### -------------------------------------------------------------------------------
     # 计算不同托盘尺寸下存储区/拣选区的存储系数
@@ -143,23 +144,10 @@ if __name__ == '__main__':
     print('-' * 20 + '程序开始' + '-' * 20 + '')
 
     project_name = 'msf'
+    #原始数据路径
     data_path = 'D:/Work/Project/09蜜思肤/msf_data/'
+    # 输出结果路径
     output_path = 'D:/Work/Project/09蜜思肤/Output/msf_'
-
-    # stock_file1 = 'D:/Project/亿格/YG/jy_original.xlsx'
-    # stock_file2 = 'D:/Project/亿格/YG/ly_original.xlsx'
-    # org_path1 = 'D:/Project/亿格/YG/output/jy_org.xlsx'
-    # org_path2 = 'D:/Project/亿格/YG/output/ly_org.xlsx'
-    # result_fileName1 = 'D:/Project/亿格/YG/output/jy_result.xlsx'
-    # result_fileName2 = 'D:/Project/亿格/YG/output/ly_result.xlsx'
-
-    # run(stock_file1, org_path1, result_fileName1)
-    # run(stock_file2, org_path2, result_fileName2)
-
-    # stock_file3 = 'D:/Project/亿格/YG/source_data.xlsx'
-    # org_path3 = 'D:/Project/亿格/YG/output/all_org.xlsx'
-    # result_fileName3 = 'D:/Project/亿格/YG/output/all_result.xlsx'
-    # run(stock_file3, org_path3, result_fileName3)
 
     stock_orgData_file = '{}msf_original.xlsx'.format(data_path)
     outbound_orgData_file = '{}msf_outbound_original.xlsx'.format(data_path)
@@ -171,9 +159,15 @@ if __name__ == '__main__':
 
     # run(stock_file, stockOrg_path, stockResult_path)
 
-    run(stock_orgData_file, output_path, outbound_orgData=outbound_orgData_file, isValidFile=True)
+    # # 运行库存模型，出库模型，生成不同维度的透视表
+    run(stock_orgData_file, output_path, outbound_orgData=outbound_orgData_file, isValidFile=False)
+    #
+    # # 计算不同托盘尺寸下存储区/拣选区的存储系数
+    # gene_factor(output_path, stock_orgData_file)
 
-    # gene_factor(stock_file)
+    # 计算出库关联规则
+    # run_fpGrowth()
+
 
     print('-' * 20 + '程序运行完成！' + '-' * 20 + '')
     endTime = datetime.now()
